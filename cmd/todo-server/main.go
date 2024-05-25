@@ -41,7 +41,7 @@ func main() {
 
 	r.Use(middleware.Logger)
 
-	api.SetupRoutes(r)
+	api.SetupRoutes(r, db)
 
 	err = db.Ping()
 	if err != nil {
