@@ -146,7 +146,7 @@ func (h HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: fmt.Sprintf("Toggled task with ID {%v} successfully.", id)})
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Toggled task with ID {%v} successfully.", id)})
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
