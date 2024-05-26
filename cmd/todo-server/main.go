@@ -24,5 +24,8 @@ func main() {
 
 	internal.SetupCronJobs(db)
 
+	// Enable it when email credentials is needed
+	// internal.LoadEmailCredentials()
+
 	http.ListenAndServe(":3000", r)
 }

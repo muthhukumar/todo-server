@@ -15,7 +15,7 @@ func SetupCronJobs(db *sql.DB) {
 		fmt.Println("Running cron job: ", time.Now())
 	})
 
-	c.Start()
+	// c.Start()
 
 	fmt.Println("Cron jobs have been set up successfully.")
 }
