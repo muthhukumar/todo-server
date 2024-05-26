@@ -22,7 +22,7 @@ func main() {
 
 	api.SetupRoutes(r, db)
 
-	internal.SetupCronJobs(db)
+	// internal.SetupCronJobs(db)
 
 	// Enable it when email credentials is needed
 	// internal.LoadEmailCredentials()

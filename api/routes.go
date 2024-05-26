@@ -83,6 +83,41 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusCreated, models.MsgResponse{Message: "Task created successfully"})
 }
 
+func (h HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid task ID"})
+	}
+
+	var task models.Task
+
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid request body"})
+
+		return
+	}
+
+	query := "UPDATE tasks SET name=$1 WHERE id=$2"
+
+	result, err := h.DB.Exec(query, task.Name, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: fmt.Sprintf("Updating task with ID {%v} failed.", id)})
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		// TODO - check whether not found here is okay
+		utils.JsonResponse(w, http.StatusNotFound, models.MsgResponse{Message: fmt.Sprintf("Updating task with ID {%v} failed. Task may not be available.", id)})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated Task successfully."})
+}
+
 func (h HandlerFn) deleteTask(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
@@ -156,6 +191,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 	r.Get("/api/v1/tasks", routeHandler.tasks)
 	r.Post("/api/v1/task/create", routeHandler.createTask)
-	r.Delete("/api/v1/tasks/{id}", routeHandler.deleteTask)
+	r.Post("/api/v1/task/{id}", routeHandler.updateTask)
+	r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
 	r.Post("/api/v1/task/{id}/toggle", routeHandler.toggleTask)
 }
