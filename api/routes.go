@@ -22,12 +22,10 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "applications/json")
-
 	rows, err := h.DB.Query("SELECT * FROM tasks")
 
 	if err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Internal Server error.")
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: "Internal Server error."})
 		return
 	}
 
@@ -36,7 +34,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var task models.Task
 		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn); err != nil {
-			utils.RespondWithError(w, http.StatusInternalServerError, "Internal Server error.")
+			utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: "Internal Server error."})
 
 			return
 		}
@@ -44,30 +42,25 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if len(tasks) == 0 {
-		json.NewEncoder(w).Encode(models.Response{Data: []models.Task{}})
+		utils.JsonResponse(w, http.StatusOK, models.Response{Data: []models.Task{}})
 
 		return
 	}
 
-	json.NewEncoder(w).Encode(models.Response{Data: tasks})
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: tasks})
 }
 
 func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 	var newTask models.Task
 
 	if err := json.NewDecoder(r.Body).Decode(&newTask); err != nil {
-		utils.RespondWithError(w, http.StatusBadRequest, "Invalid request body")
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid request body"})
 
 		return
 	}
 
 	if isValid, invalidFields := internal.ValidateTodo(newTask); !isValid {
-		w.Header().Set("Content-Type", "applications/json")
-		w.WriteHeader(http.StatusBadRequest)
-
-		json.NewEncoder(w).Encode(models.Response{Data: invalidFields})
-		// TODO - use the response with error function here too
-		// utils.RespondWithError(w, http.StatusBadRequest, )
+		utils.JsonResponse(w, http.StatusBadRequest, models.Response{Data: invalidFields})
 
 		return
 	}
@@ -80,15 +73,12 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 	rows := h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn)
 
 	if err := rows.Err(); err != nil {
-		utils.RespondWithError(w, http.StatusInternalServerError, "Creating Task failed.")
+		utils.JsonResponse(w, http.StatusInternalServerError, "Creating Task failed.")
 
 		return
 	}
 
-	w.Header().Set("Content-Type", "applications/json")
-
-	json.NewEncoder(w).Encode(models.MsgResponse{Message: "Task created successfully"})
-
+	utils.JsonResponse(w, http.StatusCreated, models.MsgResponse{Message: "Task created successfully"})
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
