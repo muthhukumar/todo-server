@@ -2,7 +2,9 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strconv"
 	"todo-server/internal"
 	"todo-server/models"
 
@@ -18,7 +20,7 @@ type HandlerFn struct {
 }
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("Hello Worlld!"))
+	w.Write([]byte("Hello World!"))
 }
 
 func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
@@ -33,8 +35,8 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn); err != nil {
-			utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: "Internal Server error."})
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt); err != nil {
+			utils.JsonResponse(w, http.StatusInternalServerError, err)
 
 			return
 		}
@@ -81,6 +83,72 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusCreated, models.MsgResponse{Message: "Task created successfully"})
 }
 
+func (h HandlerFn) deleteTask(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid task ID"})
+
+		return
+	}
+
+	result, error := h.DB.Exec("DELETE FROM tasks where id = $1", id)
+
+	if error != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Deleting task failed"})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: fmt.Sprintf("Task either already deleted or task with ID {%v} does not exist.", id)})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Deleted task with ID {%v} successfully.", id)})
+}
+
+func (h HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid task ID"})
+
+		return
+	}
+
+	query := `
+	UPDATE tasks 
+	SET completed = NOT completed, 
+			completed_on = CASE 
+					WHEN NOT completed THEN TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS')
+					ELSE '' 
+			END 
+	WHERE id = $1
+	`
+
+	result, error := h.DB.Exec(query, id)
+
+	if error != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Toggling task failed"})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: fmt.Sprintf("Task with ID {%v} does not exist.", id)})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: fmt.Sprintf("Toggled task with ID {%v} successfully.", id)})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Get("/api/v1/hello-world", helloWorld)
 
@@ -88,4 +156,6 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 	r.Get("/api/v1/tasks", routeHandler.tasks)
 	r.Post("/api/v1/task/create", routeHandler.createTask)
+	r.Delete("/api/v1/tasks/{id}", routeHandler.deleteTask)
+	r.Post("/api/v1/task/{id}/toggle", routeHandler.toggleTask)
 }
