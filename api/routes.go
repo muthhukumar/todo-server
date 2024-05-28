@@ -24,7 +24,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.Query("SELECT * FROM tasks")
+	rows, err := h.DB.Query("SELECT * FROM tasks ORDER BY created_at DESC")
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: "Internal Server error."})
