@@ -27,7 +27,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query("SELECT * FROM tasks ORDER BY created_at DESC")
 
 	if err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: "Internal Server error."})
+		utils.JsonResponse(w, http.StatusInternalServerError, err)
 		return
 	}
 
@@ -35,7 +35,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt); err != nil {
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, err)
 
 			return
@@ -184,6 +184,42 @@ func (h HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Toggled task with ID {%v} successfully.", id)})
 }
 
+func (h HandlerFn) toggleImportant(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(idStr)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Task ID is not valid."})
+		return
+	}
+
+	query := `
+update
+	tasks
+set
+	is_important = not is_important
+where
+	id = $1;
+	`
+
+	result, err := h.DB.Exec(query, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Toggling task importance failed"})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: fmt.Sprintf("Task with ID {%v} does not exist.", id)})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Toggled Task's important"})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Get("/api/v1/hello-world", helloWorld)
 
@@ -193,5 +229,6 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Post("/api/v1/task/create", routeHandler.createTask)
 	r.Post("/api/v1/task/{id}", routeHandler.updateTask)
 	r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
-	r.Post("/api/v1/task/{id}/toggle", routeHandler.toggleTask)
+	r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
+	r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
 }

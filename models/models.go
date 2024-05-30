@@ -9,6 +9,7 @@ type Task struct {
 
 	CompletedOn string `json:"completed_on"`
 	CreatedAt   string `json:"created_at"`
+	IsImportant bool   `json:"is_important"`
 }
 
 type Response struct {
