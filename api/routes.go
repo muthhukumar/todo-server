@@ -35,8 +35,8 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant); err != nil {
-			utils.JsonResponse(w, http.StatusInternalServerError, err)
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant, &task.MarkedToday); err != nil {
+			utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
 
 			return
 		}
@@ -83,7 +83,7 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusCreated, models.MsgResponse{Message: "Task created successfully"})
 }
 
-func (h HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
+func (h *HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
 	id, id_err := strconv.Atoi(idStr)
@@ -118,7 +118,7 @@ func (h HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated Task successfully."})
 }
 
-func (h HandlerFn) deleteTask(w http.ResponseWriter, r *http.Request) {
+func (h *HandlerFn) deleteTask(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
 	id, id_err := strconv.Atoi(idStr)
@@ -146,7 +146,7 @@ func (h HandlerFn) deleteTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Deleted task with ID {%v} successfully.", id)})
 }
 
-func (h HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
+func (h *HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
 	id, id_err := strconv.Atoi(idStr)
@@ -184,7 +184,7 @@ func (h HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Toggled task with ID {%v} successfully.", id)})
 }
 
-func (h HandlerFn) toggleImportant(w http.ResponseWriter, r *http.Request) {
+func (h *HandlerFn) toggleImportant(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
 	id, err := strconv.Atoi(idStr)
@@ -220,6 +220,44 @@ where
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Toggled Task's important"})
 }
 
+func (h *HandlerFn) toggleAddToMyToday(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid task ID"})
+
+		return
+	}
+
+	query := `
+	UPDATE tasks
+	SET marked_today = CASE
+												 WHEN marked_today = '' THEN CURRENT_TIMESTAMP::TEXT
+												 ELSE ''
+										 END
+	WHERE id = $1;
+	`
+
+	result, err := h.DB.Exec(query, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Toggling task Add to my day failed"})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: fmt.Sprintf("Task with ID {%v} does not exist.", id)})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Toggled Task's Add to my day"})
+
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Get("/api/v1/hello-world", helloWorld)
 
@@ -231,4 +269,5 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
 	r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
 	r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
+	r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
 }
