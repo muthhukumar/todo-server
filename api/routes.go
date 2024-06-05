@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 	"todo-server/internal"
 	"todo-server/models"
 
@@ -24,7 +25,26 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.DB.Query("SELECT * FROM tasks ORDER BY created_at DESC")
+
+	filter := r.URL.Query().Get("filter")
+
+	var query string
+	var args []interface{}
+
+	switch filter {
+	case "":
+		query = ("SELECT * FROM tasks ORDER BY created_at DESC")
+	case "my-day":
+		today := time.Now().Format("2006-01-02")
+		query = "SELECT * FROM tasks WHERE marked_today != '' AND DATE(marked_today) = $1 ORDER BY created_at DESC"
+		args = []interface{}{today}
+	case "important":
+		query = "SELECT * FROM tasks where is_important = true"
+	default:
+		query = "SELECT * FROM tasks ORDER BY created_at DESC"
+	}
+
+	rows, err := h.DB.Query(query, args...)
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, err)
@@ -234,9 +254,10 @@ func (h *HandlerFn) toggleAddToMyToday(w http.ResponseWriter, r *http.Request) {
 	query := `
 	UPDATE tasks
 	SET marked_today = CASE
-												 WHEN marked_today = '' THEN CURRENT_TIMESTAMP::TEXT
-												 ELSE ''
-										 END
+													WHEN marked_today = '' THEN CURRENT_TIMESTAMP::TEXT
+													WHEN marked_today::DATE != CURRENT_DATE THEN CURRENT_TIMESTAMP::TEXT
+													ELSE ''
+											END
 	WHERE id = $1;
 	`
 
