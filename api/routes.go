@@ -70,13 +70,14 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant, &task.MarkedToday); err != nil {
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
 
 			return
 		}
 		tasks = append(tasks, task)
 	}
+	defer rows.Close()
 
 	if len(tasks) == 0 {
 		utils.JsonResponse(w, http.StatusOK, models.Response{Data: []models.Task{}})
