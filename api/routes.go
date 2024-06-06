@@ -20,6 +20,12 @@ type HandlerFn struct {
 	DB *sql.DB
 }
 
+func healthCheck(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+
+	w.Write([]byte("OK"))
+}
+
 func helloWorld(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello World!"))
 }
@@ -280,6 +286,7 @@ func (h *HandlerFn) toggleAddToMyToday(w http.ResponseWriter, r *http.Request) {
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
+	r.Get("/health", healthCheck)
 	r.Get("/api/v1/hello-world", helloWorld)
 
 	routeHandler := HandlerFn{db}
