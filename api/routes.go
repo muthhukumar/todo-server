@@ -20,7 +20,16 @@ type HandlerFn struct {
 	DB *sql.DB
 }
 
-func healthCheck(w http.ResponseWriter, r *http.Request) {
+func (h *HandlerFn) healthCheck(w http.ResponseWriter, r *http.Request) {
+	query := "select count(*) from tasks"
+
+	if _, err := h.DB.Query(query); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+
+		w.Write([]byte("NOT OK"))
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 
 	w.Write([]byte("OK"))
@@ -286,10 +295,11 @@ func (h *HandlerFn) toggleAddToMyToday(w http.ResponseWriter, r *http.Request) {
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
-	r.Get("/health", healthCheck)
-	r.Get("/api/v1/hello-world", helloWorld)
-
 	routeHandler := HandlerFn{db}
+
+	r.Get("/health", routeHandler.healthCheck)
+
+	r.Get("/api/v1/hello-world", helloWorld)
 
 	r.Get("/api/v1/tasks", routeHandler.tasks)
 	r.Post("/api/v1/task/create", routeHandler.createTask)
