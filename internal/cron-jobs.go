@@ -20,7 +20,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		rows, err := db.Query(query, today)
 
 		if err != nil {
-			fmt.Println("Failed to run the query")
+			fmt.Println("Failed to run the query", err.Error())
 			return
 		}
 
