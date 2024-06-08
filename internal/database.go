@@ -19,8 +19,8 @@ func SetupDatabase() *sql.DB {
 
 	db, err := sql.Open("postgres", connStr)
 
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(5)
+	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err != nil {
