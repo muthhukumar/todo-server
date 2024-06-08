@@ -37,8 +37,9 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		}
 		defer rows.Close()
 
-		var body = fmt.Sprintf("Tasks Due today: %v", today)
+		var body = fmt.Sprintf("Tasks Due today: %v", time.Now())
 
+		body += "\n"
 		body += "\n"
 		for idx, task := range tasks {
 			body += fmt.Sprintf("%d. %s", idx+1, task.Name)
