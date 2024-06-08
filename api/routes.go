@@ -26,6 +26,8 @@ func (h *HandlerFn) healthCheck(w http.ResponseWriter, r *http.Request) {
 	if _, err := h.DB.Query(query); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 
+		fmt.Println("DB Error: ", err.Error())
+
 		w.Write([]byte("NOT OK"))
 		return
 	}
