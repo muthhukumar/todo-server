@@ -48,7 +48,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	switch filter {
 	case "":
-		query = ("SELECT * FROM tasks ORDER BY created_at DESC")
+		query = "SELECT * FROM tasks ORDER BY created_at DESC"
 	case "my-day":
 		today := time.Now().Format("2006-01-02")
 		query = "SELECT * FROM tasks WHERE marked_today != '' AND DATE(marked_today) = $1 ORDER BY created_at DESC"
@@ -70,7 +70,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant); err != nil {
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
 
 			return
@@ -295,6 +295,50 @@ func (h *HandlerFn) toggleAddToMyToday(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (h *HandlerFn) addDueDate(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(idStr)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid Task ID"})
+		return
+	}
+
+	var task models.Task
+
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid request body"})
+
+		return
+	}
+
+	_, err = time.Parse("2006-01-02", task.DueDate)
+
+	if err != nil && task.DueDate != "" {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid Due Date"})
+
+		return
+	}
+
+	query := "update tasks set due_date=$1 where id = $2"
+
+	result, err := h.DB.Exec(query, task.DueDate, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Updating Task Due date failed"})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusNotFound, models.MsgResponse{Message: fmt.Sprintf("Task with %v ID does not exist", id)})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Due date updated successfully"})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -306,6 +350,8 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Post("/api/v1/task/create", routeHandler.createTask)
 	r.Post("/api/v1/task/{id}", routeHandler.updateTask)
 	r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
+	r.Post("/api/v1/task/{id}/add/due-date", routeHandler.addDueDate)
+
 	r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
 	r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
 	r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)

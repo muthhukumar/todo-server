@@ -7,3 +7,5 @@ CREATE TABLE tasks (
     marked_today VARCHAR(255) DEFAULT '',
     is_important BOOLEAN DEFAULT false
 );
+
+alter table tasks add column due_date VARCHAR(255) NOT NULL DEFAULT '';

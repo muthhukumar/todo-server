@@ -3,14 +3,14 @@ package models
 import "fmt"
 
 type Task struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name"`
-	Completed bool   `json:"completed"`
-
+	ID          int    `json:"id"`
+	Name        string `json:"name"`
+	Completed   bool   `json:"completed"`
 	CompletedOn string `json:"completed_on"`
 	CreatedAt   string `json:"created_at"`
 	IsImportant bool   `json:"is_important"`
 	MarkedToday string `json:"marked_today"`
+	DueDate     string `json:"due_date"`
 }
 
 type Response struct {
