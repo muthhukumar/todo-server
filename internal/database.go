@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -17,6 +18,10 @@ func SetupDatabase() *sql.DB {
 	}
 
 	db, err := sql.Open("postgres", connStr)
+
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(10)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
