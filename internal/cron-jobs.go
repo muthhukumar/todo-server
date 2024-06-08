@@ -12,7 +12,8 @@ import (
 func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	c := cron.New(cron.WithSeconds())
 
-	c.AddFunc("*/60 * * * * *", func() {
+	c.AddFunc("0 0 7 * * *", func() {
+		// c.AddFunc("*/60 * * * * *", func() {
 		today := time.Now().Format("2006-01-02")
 
 		query := "select name, due_date from tasks where due_date = $1 ORDER BY created_at DESC"
@@ -37,7 +38,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		}
 		defer rows.Close()
 
-		var body = fmt.Sprintf("Tasks Due today: %v", time.Now())
+		var body = fmt.Sprintf("Today Task's: %v", time.Now().Format("Monday, January 2 2006"))
 
 		body += "\n"
 		body += "\n"
