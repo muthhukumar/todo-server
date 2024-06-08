@@ -35,11 +35,9 @@ func main() {
 
 	api.SetupRoutes(r, db)
 
-	// emailAuth := internal.LoadEmailCredentials()
+	emailAuth := internal.LoadEmailCredentials()
 
-	// internal.SetupCronJobs(db, emailAuth)
-
-	// Enable it when email credentials is needed
+	internal.SetupCronJobs(db, emailAuth)
 
 	http.ListenAndServe(":3000", r)
 }

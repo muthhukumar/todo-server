@@ -30,6 +30,7 @@ type FieldValidation struct {
 type EmailAuth struct {
 	FromEmail string
 	Password  string
+	ToEmail   string
 }
 
 type EmailTemplate struct {

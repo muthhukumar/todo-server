@@ -11,6 +11,7 @@ import (
 func LoadEmailCredentials() models.EmailAuth {
 	fromEmail := os.Getenv("FROM_EMAIL")
 	password := os.Getenv("EMAIL_PASSWORD")
+	toEmail := os.Getenv("TO_EMAIL")
 
 	if fromEmail == "" {
 		log.Fatal("FROM_EMAIL environment variable not set")
@@ -20,7 +21,11 @@ func LoadEmailCredentials() models.EmailAuth {
 		log.Fatal("EMAIL_PASSWORD environment variable not set")
 	}
 
-	return models.EmailAuth{FromEmail: fromEmail, Password: password}
+	if toEmail == "" {
+		log.Fatal("EMAIL_PASSWORD environment variable not set")
+	}
+
+	return models.EmailAuth{FromEmail: fromEmail, Password: password, ToEmail: toEmail}
 
 }
 
