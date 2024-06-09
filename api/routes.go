@@ -31,6 +31,7 @@ func (h *HandlerFn) healthCheck(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("NOT OK"))
 		return
 	}
+	defer h.DB.Close()
 
 	w.WriteHeader(http.StatusOK)
 
