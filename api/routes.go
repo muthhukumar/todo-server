@@ -21,7 +21,7 @@ type HandlerFn struct {
 }
 
 func (h *HandlerFn) healthCheck(w http.ResponseWriter, r *http.Request) {
-	query := "select count(*) from tasks"
+	query := "select 1"
 
 	if _, err := h.DB.Query(query); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
