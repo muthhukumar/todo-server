@@ -20,7 +20,7 @@ type HandlerFn struct {
 	DB *sql.DB
 }
 
-func healthCheck(w http.ResponseWriter, r *http.Request) {
+func healthCheckWithDB(w http.ResponseWriter, r *http.Request) {
 	query := "select 1"
 
 	db := internal.SetupDatabase()
@@ -35,6 +35,12 @@ func healthCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
+
+	w.Write([]byte("OK"))
+}
+
+func healthCheck(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 
 	w.Write([]byte("OK"))
@@ -348,6 +354,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
 	r.Get("/health", healthCheck)
+	r.Get("/healthz", healthCheckWithDB)
 
 	r.Get("/api/v1/hello-world", helloWorld)
 
