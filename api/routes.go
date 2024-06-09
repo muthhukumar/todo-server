@@ -20,10 +20,13 @@ type HandlerFn struct {
 	DB *sql.DB
 }
 
-func (h *HandlerFn) healthCheck(w http.ResponseWriter, r *http.Request) {
+func healthCheck(w http.ResponseWriter, r *http.Request) {
 	query := "select 1"
 
-	if _, err := h.DB.Query(query); err != nil {
+	db := internal.SetupDatabase()
+	defer db.Close()
+
+	if _, err := db.Query(query); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 
 		fmt.Println("DB Error: ", err.Error())
@@ -31,7 +34,6 @@ func (h *HandlerFn) healthCheck(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("NOT OK"))
 		return
 	}
-	defer h.DB.Close()
 
 	w.WriteHeader(http.StatusOK)
 
@@ -345,7 +347,7 @@ func (h *HandlerFn) addDueDate(w http.ResponseWriter, r *http.Request) {
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
-	r.Get("/health", routeHandler.healthCheck)
+	r.Get("/health", healthCheck)
 
 	r.Get("/api/v1/hello-world", helloWorld)
 
