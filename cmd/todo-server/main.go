@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -15,6 +17,12 @@ import (
 
 func main() {
 	internal.LoadDotEnvFile()
+
+	var port string
+
+	if port = os.Getenv("PORT"); port == "" {
+		port = "3000"
+	}
 
 	db := internal.SetupDatabase()
 	defer db.Close()
@@ -39,5 +47,7 @@ func main() {
 
 	internal.SetupCronJobs(db, emailAuth)
 
-	http.ListenAndServe(":3000", r)
+	addr := fmt.Sprintf(":%v", port)
+
+	http.ListenAndServe(addr, r)
 }
