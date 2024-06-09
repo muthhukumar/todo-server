@@ -2,7 +2,9 @@ package internal
 
 import (
 	"context"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"todo-server/models"
 	"todo-server/utils"
@@ -23,5 +25,25 @@ func ExtractTaskId(next http.Handler) http.Handler {
 		ctx := context.WithValue(r.Context(), "taskId", id)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+func AuthWithApiKey(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
+		xAPIKey := r.Header.Get("x-api-key")
+
+		configuredApiKey := os.Getenv("API_KEY")
+
+		if configuredApiKey == "" {
+			log.Fatal("API_KEY value is not set")
+		}
+
+		if configuredApiKey == "" || xAPIKey != configuredApiKey {
+			utils.JsonResponse(w, http.StatusUnauthorized, models.MsgResponse{Message: "Invalid API key"})
+			return
+		}
+
+		next.ServeHTTP(w, r.WithContext(r.Context()))
 	})
 }

@@ -358,13 +358,19 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 	r.Get("/api/v1/hello-world", helloWorld)
 
-	r.Get("/api/v1/tasks", routeHandler.tasks)
-	r.Post("/api/v1/task/create", routeHandler.createTask)
-	r.Post("/api/v1/task/{id}", routeHandler.updateTask)
-	r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
-	r.Post("/api/v1/task/{id}/add/due-date", routeHandler.addDueDate)
+	r.Group(func(r chi.Router) {
+		r.Use(internal.AuthWithApiKey)
 
-	r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
-	r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
-	r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
+		r.Get("/api/v1/tasks", routeHandler.tasks)
+		r.Post("/api/v1/task/create", routeHandler.createTask)
+		r.Post("/api/v1/task/{id}", routeHandler.updateTask)
+		r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
+		r.Post("/api/v1/task/{id}/add/due-date", routeHandler.addDueDate)
+
+		r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
+		r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
+		r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
+
+	})
+
 }
