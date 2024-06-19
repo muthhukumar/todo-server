@@ -50,6 +50,30 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("Hello World!"))
 }
 
+func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
+	taskId := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(taskId)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Task ID is not valid"})
+		return
+	}
+
+	query := "select * from tasks where ID=$1"
+
+	row := h.DB.QueryRow(query, id)
+
+	var task models.Task
+
+	if err := row.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate); err != nil {
+		utils.JsonResponse(w, http.StatusNotFound, models.MsgResponse{Message: fmt.Sprintf("Task with ID '%v' not found", id)})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: task})
+}
+
 func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("filter")
 	searchTerm := r.URL.Query().Get("query")
@@ -375,6 +399,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 		r.Get("/api/v1/tasks", routeHandler.tasks)
 		r.Post("/api/v1/task/create", routeHandler.createTask)
+		r.Get("/api/v1/task/{id}", routeHandler.getTask)
 		r.Post("/api/v1/task/{id}", routeHandler.updateTask)
 		r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
 		r.Post("/api/v1/task/{id}/add/due-date", routeHandler.addDueDate)
@@ -382,7 +407,6 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 		r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
 		r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
 		r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
-
 	})
 
 }
