@@ -151,11 +151,11 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-	INSERT INTO tasks (name, completed, completed_on)
-	VALUES ($1, $2, $3);
+	INSERT INTO tasks (name, completed, completed_on, marked_today, is_important)
+	VALUES ($1, $2, $3, $4, $5);
 `
 
-	rows := h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn)
+	rows := h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant)
 
 	if err := rows.Err(); err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, "Creating Task failed.")
