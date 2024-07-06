@@ -95,12 +95,17 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if searchTerm != "" {
-		if len(args) > 0 || filter == "important" {
+		if len(args) > 0 || filter == "important" || filter == "my-day" {
 			query += " AND"
 		} else {
 			query += " WHERE"
 		}
-		query += " name ILIKE '%' || $1 || '%'"
+		if filter == "my-day" {
+			query += " name ILIKE '%' || $2 || '%'"
+		} else {
+			query += " name ILIKE '%' || $1 || '%'"
+		}
+
 		args = append(args, searchTerm)
 	}
 
@@ -109,7 +114,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(query, args...)
 
 	if err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, err)
+		utils.JsonResponse(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
