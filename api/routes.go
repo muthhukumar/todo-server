@@ -86,7 +86,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 		query = "SELECT * FROM tasks"
 	case "my-day":
 		today := time.Now().Format("2006-01-02")
-		query = "SELECT * FROM tasks WHERE marked_today != '' AND DATE(marked_today) = $1"
+		query = "SELECT * FROM tasks WHERE (marked_today != '' AND DATE(marked_today) = $1) OR (due_date != '' AND DATE(due_date) = $1) "
 		args = append(args, today)
 	case "important":
 		query = "SELECT * FROM tasks where is_important = true"
