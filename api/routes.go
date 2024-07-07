@@ -77,16 +77,28 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("filter")
 	searchTerm := r.URL.Query().Get("query")
+	showCompleted := r.URL.Query().Get("showCompleted")
 
 	var query string
 	var args []interface{}
+	var completedFilter string
+
+	// Determine the completed filter condition based on the showCompleted parameter
+	switch showCompleted {
+	case "true":
+		completedFilter = " "
+	case "false":
+		completedFilter = " completed = false "
+	default:
+		completedFilter = " " // No filter for completed status
+	}
 
 	switch filter {
 	case "":
 		query = "SELECT * FROM tasks"
 	case "my-day":
 		today := time.Now().Format("2006-01-02")
-		query = "SELECT * FROM tasks WHERE (marked_today != '' AND DATE(marked_today) = $1) OR (due_date != '' AND DATE(due_date) = $1) "
+		query = "SELECT * FROM tasks WHERE ((marked_today != '' AND DATE(marked_today) = $1) OR (due_date != '' AND DATE(due_date) = $1)) "
 		args = append(args, today)
 	case "important":
 		query = "SELECT * FROM tasks where is_important = true"
@@ -94,8 +106,19 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 		query = "SELECT * FROM tasks"
 	}
 
-	if searchTerm != "" {
+	// If show completed is true then we don't have to add the filter.
+	if showCompleted != "" && showCompleted == "false" {
 		if len(args) > 0 || filter == "important" || filter == "my-day" {
+			query += " AND"
+		} else {
+			query += " WHERE"
+		}
+
+		query += completedFilter
+	}
+
+	if searchTerm != "" {
+		if len(args) > 0 || filter == "important" || filter == "my-day" || (showCompleted != "" && showCompleted == "false") {
 			query += " AND"
 		} else {
 			query += " WHERE"
