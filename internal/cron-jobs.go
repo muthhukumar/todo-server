@@ -80,6 +80,24 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		}
 		defer rows.Close()
 
+		totalTasksQuery := "select count(*) from tasks"
+
+		var totalTasks int
+		count_err := db.QueryRow(totalTasksQuery).Scan(&totalTasks)
+
+		if count_err != nil {
+			fmt.Println("Failed to run count query", count_err.Error())
+		}
+
+		totalCompletedTasksQuery := "select count(*) from tasks where completed = true;"
+
+		var totalCompletedTasks int
+		curr_err := db.QueryRow(totalCompletedTasksQuery).Scan(&totalCompletedTasks)
+
+		if curr_err != nil {
+			fmt.Println("Failed to run count query", curr_err.Error())
+		}
+
 		var body = fmt.Sprintf("Tasks completed Today: %v", time.Now().Format("Monday, January 2 2006"))
 
 		body += "\n"
@@ -88,6 +106,10 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 			body += fmt.Sprintf("%d. %s", idx+1, task.Name)
 			body += "\n"
 		}
+
+		body += "\n"
+		body += fmt.Sprintf("Total Tasks          : %v\n", totalTasks)
+		body += fmt.Sprintf("Total Completed Tasks: %v", totalCompletedTasks)
 
 		template := models.EmailTemplate{
 			To:      []string{emailAuth.ToEmail},
