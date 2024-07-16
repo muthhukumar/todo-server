@@ -15,7 +15,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	c.AddFunc("0 30 1 * * *", func() {
 		today := time.Now().Format("2006-01-02")
 
-		query := "select name, due_date from tasks where due_date = $1 ORDER BY created_at DESC"
+		query := "select name, due_date from tasks where due_date = $1 and completed = false ORDER BY created_at DESC"
 
 		rows, err := db.Query(query, today)
 
