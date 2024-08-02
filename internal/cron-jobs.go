@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+	"todo-server/data"
 	"todo-server/models"
 
 	"github.com/robfig/cron/v3"
@@ -11,6 +12,31 @@ import (
 
 func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	c := cron.New(cron.WithSeconds())
+
+	c.AddFunc("0 0 9 * * *", func() {
+		quotes := data.GetRandomQuotes()
+
+		var body = fmt.Sprintf("Quotes of the day: %v", time.Now().Format("Monday, January 2 2006"))
+
+		body += "\n"
+		body += "\n"
+
+		for idx, quote := range quotes {
+			body += fmt.Sprintf("%d. %s", idx+1, quote)
+			body += "\n"
+			body += "\n"
+		}
+
+		template := models.EmailTemplate{
+			To:      []string{emailAuth.ToEmail},
+			Subject: "Quotes of the day",
+			Body:    body,
+		}
+
+		email_sent := SendEmail(emailAuth, template)
+
+		fmt.Println("Email send for quote of the day", email_sent, time.Now())
+	})
 
 	c.AddFunc("0 30 1 * * *", func() {
 		today := time.Now().Format("2006-01-02")
