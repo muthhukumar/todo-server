@@ -189,10 +189,12 @@ var Quotes = []string{
 	"If we take care of our body, we can afford a good phone.",
 }
 
+const MAX_QUOTES = 2
+
 func GetRandomQuotes() []string {
 	var quotes []string
 
-	for len(quotes) < 2 {
+	for len(quotes) < MAX_QUOTES {
 		idx := rand.Intn(len(Quotes))
 
 		quotes = append(quotes, Quotes[idx])
