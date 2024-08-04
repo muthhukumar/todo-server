@@ -191,14 +191,15 @@ var Quotes = []string{
 
 const MAX_QUOTES = 2
 
-func GetRandomQuotes() []string {
-	var quotes []string
+// TODO: pass the max quotes as the params
+func GetRandomQuotes(quotes []string) []string {
+	var result []string
 
-	for len(quotes) < MAX_QUOTES {
-		idx := rand.Intn(len(Quotes))
+	for len(result) < MAX_QUOTES {
+		idx := rand.Intn(len(quotes))
 
-		quotes = append(quotes, Quotes[idx])
+		result = append(result, quotes[idx])
 	}
 
-	return quotes
+	return result
 }
