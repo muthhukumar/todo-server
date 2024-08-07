@@ -47,8 +47,8 @@ func GetQuotesFromNotion() ([]string, error) {
 
 	hasMore := true
 	iterations, ITERATION_LIMIT := 0, 5
-	var nextCursor string
 
+	var nextCursor string
 	var quotes []string
 
 	for hasMore && iterations <= ITERATION_LIMIT {

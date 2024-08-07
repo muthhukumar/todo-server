@@ -1,8 +1,10 @@
 package internal
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
+	"text/tabwriter"
 	"time"
 	data "todo-server/data/thoughts"
 	"todo-server/models"
@@ -102,7 +104,8 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	})
 
 	c.AddFunc("0 30 16 * * *", func() {
-		query := "SELECT name FROM tasks WHERE completed = true AND DATE(completed_on) = CURRENT_DATE;"
+		// TODO: fix this completed on date issue. Probably have to default the value to empty string instead of null. Have to change the table schema
+		query := "SELECT name FROM tasks WHERE completed = true AND DATE(NULLIF(completed_on, '')) = CURRENT_DATE;"
 
 		rows, err := db.Query(query)
 
@@ -152,8 +155,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		}
 
 		body += "\n"
-		body += fmt.Sprintf("Total Tasks          : %v\n", totalTasks)
-		body += fmt.Sprintf("Total Completed Tasks: %v", totalCompletedTasks)
+		body += getCompletedTasksTable(totalTasks, totalCompletedTasks)
 
 		template := models.EmailTemplate{
 			To:      []string{emailAuth.ToEmail},
@@ -170,3 +172,38 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 
 	fmt.Println("Cron jobs have been set up successfully.", time.Now())
 }
+
+func getCompletedTasksTable(totalTasks int, totalCompletedTasks int) string {
+	var buf bytes.Buffer
+
+	w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', tabwriter.TabIndent)
+
+	fmt.Fprintln(w, "ID\tTitle\tCount\t")
+
+	// TODO: There are some warning here. Check that also.
+	fmt.Fprintln(w, fmt.Sprintf("%d\t%s\t%d\t", 1, "Total Tasks", totalTasks))
+	fmt.Fprintln(w, fmt.Sprintf("%d\t%s\t%d\t", 2, "Total Completed Tasks", totalCompletedTasks))
+
+	w.Flush()
+
+	result := buf.String()
+
+	return result
+
+}
+
+// TODO: finish this. This is for the list of tasks for the day
+// func getCompletedTasksTable(tasks []models.Task) string {
+// 	var buf bytes.Buffer
+//
+// 	w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', tabwriter.AlignRight)
+//
+// 	for idx, task := range tasks {
+// 		fmt.Fprintln(w, "")
+// 	}
+//
+// 	result := buf.String()
+//
+// 	return result
+//
+// }
