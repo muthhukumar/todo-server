@@ -2,6 +2,7 @@ package data
 
 import (
 	"math/rand"
+	"todo-server/utils"
 )
 
 var Quotes = []string{
@@ -189,17 +190,35 @@ var Quotes = []string{
 	"If we take care of our body, we can afford a good phone.",
 }
 
-const MAX_QUOTES = 2
+func GetRandomQuotes(quotes []string, noOfItems int) []string {
+	utils.Assert(noOfItems <= len(quotes), "No of items params should be less than or equal to length of quotes")
 
-// TODO: pass the max quotes as the params
-func GetRandomQuotes(quotes []string) []string {
 	var result []string
 
-	for len(result) < MAX_QUOTES {
+	for len(result) < noOfItems {
 		idx := rand.Intn(len(quotes))
 
 		result = append(result, quotes[idx])
 	}
+
+	utils.Assert(len(quotes) >= noOfItems && len(result) == noOfItems, "No of random quotes should be as same as noOfItems If the length of quotes is greater than noOfItems")
+
+	return result
+}
+
+func GetQuotes() []string {
+	var result []string
+
+	quotesFromNotion, err := GetQuotesFromNotion()
+
+	if err != nil || quotesFromNotion == nil {
+		result = Quotes
+	} else {
+		result = quotesFromNotion
+	}
+
+	utils.Assert(result != nil, "Quotes should not be nil")
+	utils.Assert(len(result) >= 0, "Quotes should be an array of minimum 0 elements")
 
 	return result
 }

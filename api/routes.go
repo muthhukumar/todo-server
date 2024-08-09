@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	data "todo-server/data/quotes"
 	"todo-server/internal"
 	"todo-server/models"
 
@@ -414,6 +415,11 @@ func (h *HandlerFn) addDueDate(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Due date updated successfully"})
 }
 
+// TODO: sending size should return that no of quotes
+func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
+	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: data.GetQuotes()})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -421,6 +427,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Get("/healthz", healthCheckWithDB)
 
 	r.Get("/api/v1/hello-world", helloWorld)
+	r.Get("/api/v1/quotes", routeHandler.getQuotes)
 
 	r.Group(func(r chi.Router) {
 		r.Use(internal.AuthWithApiKey)
@@ -435,6 +442,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 		r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
 		r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
 		r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
+
 	})
 
 }

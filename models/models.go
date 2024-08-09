@@ -17,6 +17,10 @@ type Response struct {
 	Data any `json:"data"`
 }
 
+type QuotesResponse struct {
+	Quotes []string `json:"quotes"`
+}
+
 type MsgResponse struct {
 	Message string `json:"message"`
 }

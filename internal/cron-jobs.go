@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"text/tabwriter"
 	"time"
-	data "todo-server/data/thoughts"
+	data "todo-server/data/quotes"
 	"todo-server/models"
-	"todo-server/utils"
 
 	"github.com/robfig/cron/v3"
 )
@@ -18,23 +17,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 
 	c.AddFunc("0 0 9 * * *", func() {
 
-		var allQuotes []string
-
-		nqoutes, err := data.GetQuotesFromNotion()
-
-		if err != nil || nqoutes == nil {
-			fmt.Println("Failed to get quotes from notion", err.Error())
-			allQuotes = data.Quotes
-			fmt.Println("Using Quotes from local")
-		} else {
-			allQuotes = nqoutes
-			fmt.Println("Using Quotes from notion")
-		}
-
-		utils.Assert(allQuotes != nil, "Quotes should not be nil")
-		utils.Assert(len(allQuotes) >= 0, "Quotes should be an array of minimum 0 elements")
-
-		quotes := data.GetRandomQuotes(allQuotes)
+		quotes := data.GetRandomQuotes(data.GetQuotes(), 2)
 
 		var body = fmt.Sprintf("Quotes of the day: %v", time.Now().Format("Monday, January 2 2006"))
 
