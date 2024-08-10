@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"todo-server/utils"
 
 	_ "github.com/lib/pq"
 )
@@ -12,9 +13,7 @@ import (
 func SetupDatabase() *sql.DB {
 	connStr := os.Getenv("POSTGRES_CONNECTION_STRING")
 
-	if connStr == "" {
-		log.Fatal("POSTGRES_CONNECTION_STRING environment variable not set")
-	}
+	utils.Assert(connStr != "", "POSTGRES_CONNECTION_STRING environment variable not set")
 
 	db, err := sql.Open("postgres", connStr)
 

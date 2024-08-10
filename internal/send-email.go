@@ -2,10 +2,10 @@ package internal
 
 import (
 	"fmt"
-	"log"
 	"net/smtp"
 	"os"
 	"todo-server/models"
+	"todo-server/utils"
 )
 
 func LoadEmailCredentials() models.EmailAuth {
@@ -13,17 +13,9 @@ func LoadEmailCredentials() models.EmailAuth {
 	password := os.Getenv("EMAIL_PASSWORD")
 	toEmail := os.Getenv("TO_EMAIL")
 
-	if fromEmail == "" {
-		log.Fatal("FROM_EMAIL environment variable not set")
-	}
-
-	if password == "" {
-		log.Fatal("EMAIL_PASSWORD environment variable not set")
-	}
-
-	if toEmail == "" {
-		log.Fatal("EMAIL_PASSWORD environment variable not set")
-	}
+	utils.Assert(fromEmail != "", "FROM_EMAIL env should not be empty")
+	utils.Assert(password != "", "EMAIL_PASSWORD env should not be empty")
+	utils.Assert(toEmail != "", "TO_EMAIL env should not be empty")
 
 	return models.EmailAuth{FromEmail: fromEmail, Password: password, ToEmail: toEmail}
 

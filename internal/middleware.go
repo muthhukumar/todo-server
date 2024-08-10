@@ -2,7 +2,6 @@ package internal
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -35,11 +34,9 @@ func AuthWithApiKey(next http.Handler) http.Handler {
 
 		configuredApiKey := os.Getenv("API_KEY")
 
-		if configuredApiKey == "" {
-			log.Fatal("API_KEY value is not set")
-		}
+		utils.Assert(configuredApiKey != "", "API_KEY should not be empty")
 
-		if configuredApiKey == "" || xAPIKey != configuredApiKey {
+		if xAPIKey == "" || xAPIKey != configuredApiKey {
 			utils.JsonResponse(w, http.StatusUnauthorized, models.MsgResponse{Message: "Invalid API key"})
 			return
 		}

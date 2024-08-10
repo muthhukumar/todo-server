@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"todo-server/utils"
 )
 
 // TODO: maybe rename this thing here later. Not sure what to rename but in the payload we have to send it as start cursor but we get the value as next_cursor
@@ -40,6 +41,9 @@ type NotionBaseResponse struct {
 func GetQuotesFromNotion() ([]string, error) {
 	notionSecretToken := os.Getenv("NOTION_SECRET_TOKEN")
 	notionDatabase := os.Getenv("NOTION_DATABASE")
+
+	utils.Assert(notionSecretToken != "", "Notion secret token should not be empty")
+	utils.Assert(notionDatabase != "", "Notion database id should not be empty")
 
 	url := fmt.Sprintf("https://api.notion.com/v1/databases/%s/query", notionDatabase)
 
