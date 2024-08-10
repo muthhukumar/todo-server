@@ -10,5 +10,5 @@ func Assert(condition bool, message string) {
 		log.Fatalf("Assertion failed: %s", message)
 	}
 
-	fmt.Println("Assert pass: v", message)
+	fmt.Println("Assert pass: ", message)
 }

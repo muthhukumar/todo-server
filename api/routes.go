@@ -415,9 +415,37 @@ func (h *HandlerFn) addDueDate(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Due date updated successfully"})
 }
 
-// TODO: sending size should return that no of quotes
 func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
-	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: data.GetQuotes()})
+	sizeStr := r.URL.Query().Get("size")
+
+	var size int
+
+	if sizeStr != "" {
+		var err error
+
+		size, err = strconv.Atoi(sizeStr)
+
+		size = max(0, size)
+
+		if err != nil {
+			utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Invalid size parameter"})
+			return
+		}
+	}
+
+	utils.Assert(size >= 0, "Size should be greater than or equal to zero")
+
+	quotes := data.GetQuotes()
+
+	if size > 0 {
+		result := quotes[0:min(size, len(quotes))]
+
+		utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(result)})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: quotes, Size: len(quotes)})
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
