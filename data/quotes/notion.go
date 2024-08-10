@@ -42,8 +42,8 @@ func GetQuotesFromNotion() ([]string, error) {
 	notionSecretToken := os.Getenv("NOTION_SECRET_TOKEN")
 	notionDatabase := os.Getenv("NOTION_DATABASE")
 
-	utils.Assert(notionSecretToken != "", "Notion secret token should not be empty")
-	utils.Assert(notionDatabase != "", "Notion database id should not be empty")
+	utils.Assert(notionSecretToken != "", "Notion secret token value is set")
+	utils.Assert(notionDatabase != "", "Notion database ID is set")
 
 	url := fmt.Sprintf("https://api.notion.com/v1/databases/%s/query", notionDatabase)
 

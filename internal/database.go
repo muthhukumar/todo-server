@@ -13,7 +13,7 @@ import (
 func SetupDatabase() *sql.DB {
 	connStr := os.Getenv("POSTGRES_CONNECTION_STRING")
 
-	utils.Assert(connStr != "", "POSTGRES_CONNECTION_STRING environment variable not set")
+	utils.Assert(connStr != "", "POSTGRES_CONNECTION_STRING environment variable is set")
 
 	db, err := sql.Open("postgres", connStr)
 

@@ -13,9 +13,9 @@ func LoadEmailCredentials() models.EmailAuth {
 	password := os.Getenv("EMAIL_PASSWORD")
 	toEmail := os.Getenv("TO_EMAIL")
 
-	utils.Assert(fromEmail != "", "FROM_EMAIL env should not be empty")
-	utils.Assert(password != "", "EMAIL_PASSWORD env should not be empty")
-	utils.Assert(toEmail != "", "TO_EMAIL env should not be empty")
+	utils.Assert(fromEmail != "", "FROM_EMAIL env is set")
+	utils.Assert(password != "", "EMAIL_PASSWORD env is set")
+	utils.Assert(toEmail != "", "TO_EMAIL env is set")
 
 	return models.EmailAuth{FromEmail: fromEmail, Password: password, ToEmail: toEmail}
 

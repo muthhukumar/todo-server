@@ -34,7 +34,7 @@ func AuthWithApiKey(next http.Handler) http.Handler {
 
 		configuredApiKey := os.Getenv("API_KEY")
 
-		utils.Assert(configuredApiKey != "", "API_KEY should not be empty")
+		utils.Assert(configuredApiKey != "", "API_KEY value is set")
 
 		if xAPIKey == "" || xAPIKey != configuredApiKey {
 			utils.JsonResponse(w, http.StatusUnauthorized, models.MsgResponse{Message: "Invalid API key"})
