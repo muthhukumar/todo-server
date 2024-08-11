@@ -2,7 +2,6 @@ package internal
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
 	"os"
 	"todo-server/utils"
@@ -30,7 +29,7 @@ func SetupDatabase() *sql.DB {
 		log.Fatalf("Ping to database failed: %v", err)
 	}
 
-	fmt.Println("Database connection established successfully")
+	log.Println("Database connection established successfully")
 
 	return db
 }

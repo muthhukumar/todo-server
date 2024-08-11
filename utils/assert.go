@@ -1,7 +1,6 @@
 package utils
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -10,5 +9,5 @@ func Assert(condition bool, message string) {
 		log.Fatalf("Assertion failed: %s", message)
 	}
 
-	fmt.Println("Assert pass: ", message)
+	log.Println("Assert pass: ", message)
 }

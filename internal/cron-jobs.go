@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"fmt"
+	"log"
 	"text/tabwriter"
 	"time"
 	"todo-server/backup"
@@ -44,7 +45,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 
 		email_sent := SendEmail(emailAuth, template)
 
-		fmt.Println("Email send for quote of the day", email_sent, time.Now())
+		log.Println("Email send for quote of the day", email_sent, time.Now())
 	})
 
 	c.AddFunc("0 30 1 * * *", func() {
@@ -55,7 +56,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		rows, err := db.Query(query, today)
 
 		if err != nil {
-			fmt.Println("Failed to run the query", err.Error())
+			log.Println("Failed to run the query", err.Error())
 			return
 		}
 
@@ -64,7 +65,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		for rows.Next() {
 			var task models.Task
 			if err := rows.Scan(&task.Name, &task.DueDate); err != nil {
-				fmt.Println("Failed to set task data")
+				log.Println("Failed to set task data")
 				return
 			}
 
@@ -89,7 +90,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 
 		email_sent := SendEmail(emailAuth, template)
 
-		fmt.Println("Email send", email_sent, time.Now())
+		log.Println("Email send", email_sent, time.Now())
 	})
 
 	c.AddFunc("0 30 16 * * *", func() {
@@ -99,7 +100,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		rows, err := db.Query(query)
 
 		if err != nil {
-			fmt.Println("Failed to run the query", err.Error())
+			log.Println("Failed to run the query", err.Error())
 			return
 		}
 
@@ -108,7 +109,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		for rows.Next() {
 			var task models.Task
 			if err := rows.Scan(&task.Name); err != nil {
-				fmt.Println("Failed to set task data")
+				log.Println("Failed to set task data")
 				return
 			}
 
@@ -122,7 +123,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		count_err := db.QueryRow(totalTasksQuery).Scan(&totalTasks)
 
 		if count_err != nil {
-			fmt.Println("Failed to run count query", count_err.Error())
+			log.Println("Failed to run count query", count_err.Error())
 		}
 
 		totalCompletedTasksQuery := "select count(*) from tasks where completed = true;"
@@ -131,7 +132,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		curr_err := db.QueryRow(totalCompletedTasksQuery).Scan(&totalCompletedTasks)
 
 		if curr_err != nil {
-			fmt.Println("Failed to run count query", curr_err.Error())
+			log.Println("Failed to run count query", curr_err.Error())
 		}
 
 		var body = fmt.Sprintf("Tasks completed Today: %v", time.Now().Format("Monday, January 2 2006"))
@@ -154,12 +155,12 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 
 		email_sent := SendEmail(emailAuth, template)
 
-		fmt.Println("Email send for completed tasks", email_sent, time.Now())
+		log.Println("Email send for completed tasks", email_sent, time.Now())
 	})
 
 	c.Start()
 
-	fmt.Println("Cron jobs have been set up successfully.", time.Now())
+	log.Println("Cron jobs have been set up successfully.", time.Now())
 }
 
 func getCompletedTasksTable(totalTasks int, totalCompletedTasks int) string {

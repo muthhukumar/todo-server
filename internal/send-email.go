@@ -2,6 +2,7 @@ package internal
 
 import (
 	"fmt"
+	"log"
 	"net/smtp"
 	"os"
 	"todo-server/models"
@@ -30,7 +31,7 @@ func SendEmail(emailAuth models.EmailAuth, emailTemplate models.EmailTemplate) (
 	err := smtp.SendMail(addr, auth, emailAuth.FromEmail, emailTemplate.To, emailTemplate.GetMessage())
 
 	if err != nil {
-		fmt.Println("Sending email failed", err)
+		log.Println("Sending email failed", err)
 
 		return false
 	}
