@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"text/tabwriter"
 	"time"
+	"todo-server/backup"
 	data "todo-server/data/quotes"
 	"todo-server/models"
 
@@ -14,6 +15,11 @@ import (
 
 func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	c := cron.New(cron.WithSeconds())
+
+	// Sunday evening 5 o clock
+	c.AddFunc("0 0 17 * * 0", func() {
+		backup.BackupTasks(db, emailAuth)
+	})
 
 	c.AddFunc("0 0 9 * * *", func() {
 
