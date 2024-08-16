@@ -15,6 +15,7 @@ import (
 	"todo-server/utils"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-playground/validator/v10"
 )
 
 type HandlerFn struct {
@@ -173,11 +174,25 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if isValid, invalidFields := internal.ValidateTodo(newTask); !isValid {
-		utils.JsonResponse(w, http.StatusBadRequest, models.Response{Data: invalidFields})
+	validate := validator.New()
+
+	err := validate.Struct(newTask)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status: http.StatusBadRequest,
+			// TODO: this object should be custom string
+			Object: "error",
+			// TODO: this object should be custom string
+			Code:          internal.ErrorCodeValidationFailed,
+			Message:       "One or more fields are invalid",
+			InvalidFields: internal.ConstructInvalidFieldData(err)})
+		// TODO: add request id here
 
 		return
 	}
+
+	utils.Assert(len(newTask.Name) > 0, "Task name length should be greater than 0")
 
 	query := `
 	INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date)

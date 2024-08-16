@@ -2,21 +2,40 @@ package internal
 
 import (
 	"todo-server/models"
+
+	"github.com/go-playground/validator/v10"
 )
 
-func ValidateTodo(task models.Task) (isValid bool, validationResult []models.FieldValidation) {
-	if task.Name == "" {
-		validationResult = append(validationResult, models.FieldValidation{
-			Field:        "name",
-			IsValid:      false,
-			ErrorMessage: "Please enter valid task",
-		})
-		isValid = false
+const (
+	ErrorCodeValidationFailed = "validation_failed"
+)
 
-		return
+func GetCustomErrorMessage(fe validator.FieldError) string {
+	switch fe.Field() {
+	case "Name":
+		switch fe.Tag() {
+		case "required":
+			return "The Name field is required."
+		case "min":
+			return "The Name field must be at least 3 characters long."
+		case "max":
+			return "The name field must be less than 1000 characters long."
+		}
 	}
 
-	isValid = true
+	return fe.Error()
+}
 
-	return
+func ConstructInvalidFieldData(error error) []models.InvalidField {
+	var result []models.InvalidField
+
+	for _, err := range error.(validator.ValidationErrors) {
+		result = append(result, models.InvalidField{
+			ErrorMessage: GetCustomErrorMessage(err),
+			Field:        err.Field(),
+			IsValid:      true,
+		})
+	}
+
+	return result
 }
