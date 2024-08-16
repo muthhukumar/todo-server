@@ -17,8 +17,8 @@ import (
 func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	c := cron.New(cron.WithSeconds())
 
-	// Sunday evening 5 o clock
-	c.AddFunc("0 0 17 * * 0", func() {
+	// Every day afternoon 2:30
+	c.AddFunc("0 0 9 * * *", func() {
 		backup.BackupTasks(db, emailAuth)
 	})
 
