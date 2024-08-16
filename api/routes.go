@@ -233,14 +233,11 @@ func (h *HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
-			Status: http.StatusBadRequest,
-			// TODO: this object should be custom string
-			Object: "error",
-			// TODO: this object should be custom string
+			Status:        http.StatusBadRequest,
+			Object:        "error",
 			Code:          internal.ErrorCodeValidationFailed,
 			Message:       "One or more fields are invalid",
 			InvalidFields: internal.ConstructInvalidFieldData(err)})
-		// TODO: add request id here
 
 		return
 	}
