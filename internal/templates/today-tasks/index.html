@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html
+  lang="en"
+  style="
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: white;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+      Arial, sans-serif;
+  "
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Today's Task List</title>
+  </head>
+  <body style="padding: 8px; color: black">
+    <div
+      class="container"
+      style="
+        padding: 12px;
+        border-radius: 8px;
+        background-color: #e8e8e8;
+        max-width: 640px;
+        margin: 0 auto;
+      "
+    >
+      <h1 class="title" style="padding: 0; margin: 0; margin-bottom: 12px; font-size: 3rem">
+        MKTodo
+      </h1>
+      <p style="font-size: 1rem">Hi Bro,</p>
+
+      <p style="font-size: 1rem">Here's your list of tasks for today:</p>
+
+      <ol class="tasks" style="padding: 0 0 0 16px">
+        {{range .}}
+        <li class="task" style="font-size: 1.1rem; margin: 4px 0">{{.Name}}</li>
+        {{end}}
+      </ol>
+
+      <p style="font-size: 1rem">Let's get these done! You’ve got this.</p>
+    </div>
+  </body>
+</html>

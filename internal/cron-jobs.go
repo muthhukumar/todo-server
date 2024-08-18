@@ -9,6 +9,7 @@ import (
 	"time"
 	"todo-server/backup"
 	data "todo-server/data/quotes"
+	templates "todo-server/internal/templates/today-tasks"
 	"todo-server/models"
 
 	"github.com/robfig/cron/v3"
@@ -48,6 +49,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		log.Println("Email send for quote of the day", email_sent, time.Now())
 	})
 
+	// Today's Tasks
 	c.AddFunc("0 30 1 * * *", func() {
 		today := time.Now().Format("2006-01-02")
 
@@ -73,22 +75,25 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		}
 		defer rows.Close()
 
-		var body = fmt.Sprintf("Today Task's: %v", time.Now().Format("Monday, January 2 2006"))
+		var bodyBuff bytes.Buffer
 
-		body += "\n"
-		body += "\n"
-		for idx, task := range tasks {
-			body += fmt.Sprintf("%d. %s", idx+1, task.Name)
-			body += "\n"
+		tl, err := templates.TodayTasksEmailTemplate()
+
+		if err != nil {
+			log.Println("Failed to generate the template for email", err.Error())
+			return
 		}
 
-		template := models.EmailTemplate{
-			To:      []string{emailAuth.ToEmail},
-			Subject: "Today's Tasks",
-			Body:    body,
-		}
+		tl.Execute(&bodyBuff, tasks)
 
-		email_sent := SendEmail(emailAuth, template)
+		msg := "From: " + emailAuth.FromEmail + "\n" +
+			"To: " + emailAuth.ToEmail + "\n" +
+			"Subject: Today's Task List\n" +
+			"MIME-version: 1.0;\n" +
+			"Content-Type: text/html; charset=\"UTF-8\";\n\n" +
+			bodyBuff.String()
+
+		email_sent := SendHtmlEmail(emailAuth, []string{emailAuth.ToEmail}, []byte(msg))
 
 		log.Println("Email send", email_sent, time.Now())
 	})

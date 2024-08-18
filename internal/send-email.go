@@ -38,3 +38,20 @@ func SendEmail(emailAuth models.EmailAuth, emailTemplate models.EmailTemplate) (
 
 	return true
 }
+
+func SendHtmlEmail(emailAuth models.EmailAuth, to []string, emailTemplate []byte) (success bool) {
+	smtpHost := "smtp.gmail.com"
+	smtpPort := "587"
+	addr := fmt.Sprintf("%v:%v", smtpHost, smtpPort)
+	auth := smtp.PlainAuth("", emailAuth.FromEmail, emailAuth.Password, smtpHost)
+
+	err := smtp.SendMail(addr, auth, emailAuth.FromEmail, to, emailTemplate)
+
+	if err != nil {
+		log.Println("Sending email failed", err)
+
+		return false
+	}
+
+	return true
+}
