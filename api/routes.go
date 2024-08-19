@@ -3,8 +3,10 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"text/template"
 	"time"
 	data "todo-server/data/quotes"
 	"todo-server/internal"
@@ -76,6 +78,69 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: task})
+}
+
+func root(w http.ResponseWriter, r *http.Request) {
+	funnyMessages := []string{"Oops, nothing to see here! Just a wild goose chase. 🦢",
+		"You’ve reached the end of the internet. Congratulations!",
+		"404: Fun not found. Try again later!",
+		"Welcome to the void! It’s pretty empty here, huh?",
+		"Under construction: Please wear your hard hat at all times. 🚧",
+		"You’re lost, aren’t you? Let’s find our way back together!",
+		"You're suppose to not see this page.",
+	}
+
+	idx := rand.Intn(len(funnyMessages))
+
+	tmpl, err := template.New("root").Parse(`
+<!DOCTYPE html>
+<html
+  lang="en"
+  style="
+		height: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: white;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+      Arial, sans-serif;
+  "
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MK Todo Server</title>
+  </head>
+		<style>
+		* {
+			box-sizing: border-box;
+		}
+		</style>
+  <body style="
+		height: 100%;
+		">
+    <div
+      style="
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+      "
+    >
+		<h1 style="padding: 0; margin: 0;text-align: center;">
+		{{.}}
+      </h1>
+    </div>
+  </body>
+</html>
+		`)
+
+	if err != nil {
+		w.Write([]byte("Oops!! Something bad happened."))
+
+		return
+	}
+
+	tmpl.Execute(w, funnyMessages[idx])
 }
 
 func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
@@ -430,6 +495,7 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
+	r.Get("/", root)
 	r.Get("/health", healthCheck)
 	r.Get("/healthz", healthCheckWithDB)
 
