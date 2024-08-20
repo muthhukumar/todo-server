@@ -461,6 +461,7 @@ func (h *HandlerFn) addDueDate(w http.ResponseWriter, r *http.Request) {
 
 func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 	sizeStr := r.URL.Query().Get("size")
+	random := r.URL.Query().Get("random")
 
 	var size int
 
@@ -481,15 +482,24 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 
 	quotes := data.GetQuotes()
 
+	var result []string
+
 	if size > 0 {
-		result := quotes[0:min(size, len(quotes))]
-
-		utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(result)})
-
-		return
+		result = quotes[0:min(size, len(quotes))]
 	}
 
-	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: quotes, Size: len(quotes)})
+	if random == "true" {
+		if size <= 0 {
+			size = len(quotes)
+		}
+
+		result = data.GetRandomQuotes(quotes, size)
+	}
+
+	utils.Assert(len(result) >= 0, "Result should be greater than or equal to zero")
+	utils.Assert(result != nil, "Result should never be nil")
+
+	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(quotes)})
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {

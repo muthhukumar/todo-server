@@ -193,7 +193,7 @@ var Quotes = []string{
 func GetRandomQuotes(quotes []string, noOfItems int) []string {
 	utils.Assert(noOfItems <= len(quotes), "No of items params should be less than or equal to length of quotes")
 
-	var result []string
+	var result []string = []string{}
 
 	for len(result) < noOfItems {
 		idx := rand.Intn(len(quotes))
