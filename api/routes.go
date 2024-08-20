@@ -147,8 +147,10 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("filter")
 	searchTerm := r.URL.Query().Get("query")
 	showCompleted := r.URL.Query().Get("showCompleted")
+	random := r.URL.Query().Get("random")
+	size := internal.ParseSize(r.URL.Query().Get("size"))
 
-	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted)
+	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted, random, size)
 
 	rows, err := h.DB.Query(query, args...)
 

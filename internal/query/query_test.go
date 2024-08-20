@@ -39,7 +39,7 @@ func TestGetTastsQueryDefault(t *testing.T) {
 	}
 
 	for _, curr := range tests {
-		result, args := GetTasksQuery(curr.Inputs[0], curr.Inputs[1], curr.Inputs[2])
+		result, args := GetTasksQuery(curr.Inputs[0], curr.Inputs[1], curr.Inputs[2], "false", 0)
 
 		for i := range args {
 			if args[i] != curr.Args[i] {
