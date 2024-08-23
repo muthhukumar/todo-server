@@ -15,8 +15,41 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
+func sendQuotes(emailAuth models.EmailAuth) {
+	quotes := data.GetRandomQuotes(data.GetQuotes(), 2)
+
+	var body = fmt.Sprintf("Quotes of the day: %v", time.Now().Format("Monday, January 2 2006"))
+
+	body += "\n"
+	body += "\n"
+
+	for idx, quote := range quotes {
+		body += fmt.Sprintf("%d. %s", idx+1, quote)
+		body += "\n"
+		body += "\n"
+	}
+
+	template := models.EmailTemplate{
+		To:      []string{emailAuth.ToEmail},
+		Subject: "Quotes of the day",
+		Body:    body,
+	}
+
+	email_sent := SendEmail(emailAuth, template)
+
+	log.Println("Email send for quote of the day", email_sent, time.Now())
+}
+
 func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	c := cron.New(cron.WithSeconds())
+
+	c.AddFunc("0 30 1 * * *", func() {
+		sendQuotes(emailAuth)
+	})
+
+	c.AddFunc("0 0 7 * * *", func() {
+		sendQuotes(emailAuth)
+	})
 
 	// Every day afternoon 2:30
 	c.AddFunc("0 0 9 * * *", func() {
@@ -24,29 +57,11 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	})
 
 	c.AddFunc("0 0 9 * * *", func() {
+		sendQuotes(emailAuth)
+	})
 
-		quotes := data.GetRandomQuotes(data.GetQuotes(), 2)
-
-		var body = fmt.Sprintf("Quotes of the day: %v", time.Now().Format("Monday, January 2 2006"))
-
-		body += "\n"
-		body += "\n"
-
-		for idx, quote := range quotes {
-			body += fmt.Sprintf("%d. %s", idx+1, quote)
-			body += "\n"
-			body += "\n"
-		}
-
-		template := models.EmailTemplate{
-			To:      []string{emailAuth.ToEmail},
-			Subject: "Quotes of the day",
-			Body:    body,
-		}
-
-		email_sent := SendEmail(emailAuth, template)
-
-		log.Println("Email send for quote of the day", email_sent, time.Now())
+	c.AddFunc("0 0 11 * * *", func() {
+		sendQuotes(emailAuth)
 	})
 
 	// Today's Tasks
