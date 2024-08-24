@@ -484,7 +484,7 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 
 	quotes := data.GetQuotes()
 
-	var result []string
+	var result []string = quotes
 
 	if size > 0 {
 		result = quotes[0:min(size, len(quotes))]
@@ -498,8 +498,8 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 		result = data.GetRandomQuotes(quotes, size)
 	}
 
-	utils.Assert(len(result) >= 0, "Result should be greater than or equal to zero")
 	utils.Assert(result != nil, "Result should never be nil")
+	utils.Assert(len(result) >= 0, "Result should be greater than or equal to zero")
 
 	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(quotes)})
 }
