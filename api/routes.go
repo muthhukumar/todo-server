@@ -514,7 +514,7 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 			default:
 				fmt.Fprintf(w, "data: %s\n\n", item)
 				w.(http.Flusher).Flush()
-				time.Sleep(time.Millisecond * 250)
+				time.Sleep(time.Millisecond * 100)
 			}
 		}
 		return
