@@ -464,6 +464,7 @@ func (h *HandlerFn) addDueDate(w http.ResponseWriter, r *http.Request) {
 func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 	sizeStr := r.URL.Query().Get("size")
 	random := r.URL.Query().Get("random")
+	stream := r.URL.Query().Get("stream")
 
 	var size int
 
@@ -500,6 +501,24 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 
 	utils.Assert(result != nil, "Result should never be nil")
 	utils.Assert(len(result) >= 0, "Result should be greater than or equal to zero")
+
+	if stream == "true" {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		for _, item := range result {
+			select {
+			case <-r.Context().Done():
+				return
+			default:
+				fmt.Fprintf(w, "data: %s\n\n", item)
+				w.(http.Flusher).Flush()
+				time.Sleep(time.Millisecond * 250)
+			}
+		}
+		return
+	}
 
 	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(quotes)})
 }
