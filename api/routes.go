@@ -508,7 +508,7 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 			case <-r.Context().Done():
 				return
 			default:
-				fmt.Fprintf(w, "data: %s\n\n", item)
+				fmt.Fprintf(w, "%s\n\n", item)
 				w.(http.Flusher).Flush()
 				time.Sleep(time.Millisecond * 100)
 			}
