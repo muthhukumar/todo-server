@@ -48,7 +48,6 @@ type EmailTemplate struct {
 
 type ErrorResponseV2 struct {
 	Status        int            `json:"status"`
-	Object        string         `json:"object"`
 	Code          string         `json:"code"`
 	Message       string         `json:"message"`
 	RequestId     string         `json:"request_id"`

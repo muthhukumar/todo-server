@@ -8,6 +8,7 @@ import (
 
 const (
 	ErrorCodeValidationFailed = "validation_failed"
+	ErrorCodeErrorMessage     = "error_message"
 )
 
 func GetCustomErrorMessage(fe validator.FieldError) string {

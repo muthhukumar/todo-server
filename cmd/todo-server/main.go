@@ -30,11 +30,11 @@ func main() {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
-	r.Use(httprate.LimitByIP(500, 1*time.Minute))
+	r.Use(httprate.LimitByIP(700, 1*time.Minute))
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:1420", "http://127.0.0.1:8080", "*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"HEAD", "GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization", "x-api-key"},
 		AllowCredentials: true,
 	})
