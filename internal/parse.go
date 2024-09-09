@@ -2,10 +2,8 @@ package internal
 
 import (
 	"fmt"
-	"io"
+	"regexp"
 	"strconv"
-
-	"golang.org/x/net/html"
 )
 
 func ParseSize(str string) int {
@@ -18,28 +16,14 @@ func ParseSize(str string) int {
 	return size
 }
 
-func ParseHTMLTitle(r io.Reader) (string, error) {
-	doc, err := html.Parse(r)
-	if err != nil {
-		return "", err
+func ExtractTitle(input string) (string, error) {
+	re := regexp.MustCompile(`<title>(.*?)</title>`)
+
+	matches := re.FindStringSubmatch(input)
+
+	if len(matches) > 1 {
+		return matches[1], nil
 	}
 
-	var title string
-	var traverse func(*html.Node)
-	traverse = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "title" && n.FirstChild != nil {
-			title = n.FirstChild.Data
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			traverse(c)
-		}
-	}
-	traverse(doc)
-
-	if title == "" {
-		return "", fmt.Errorf("title tag not found")
-	}
-
-	return title, nil
+	return "", fmt.Errorf("no title found")
 }

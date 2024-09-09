@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -541,7 +542,12 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Set("DNT", "1")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("Upgrade-Insecure-Requests", "1")
 
 	resp, err := http.DefaultClient.Do(req)
 
@@ -562,7 +568,17 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	title, err := internal.ParseHTMLTitle(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.ErrorResponseV2{
+			Status:  http.StatusUnprocessableEntity,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	title, err := internal.ExtractTitle(string(body))
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
