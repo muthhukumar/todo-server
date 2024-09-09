@@ -519,6 +519,63 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(quotes)})
 }
 
+func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query().Get("url")
+
+	if url == "" {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:  http.StatusBadRequest,
+			Message: "URL is not provided",
+		})
+
+		return
+	}
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
+			Status:  http.StatusInternalServerError,
+			Message: "Creating request failed.",
+		})
+
+		return
+	}
+
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36")
+
+	resp, err := http.DefaultClient.Do(req)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.ErrorResponseV2{
+			Status:  resp.StatusCode,
+			Message: "Unable to fetch title of the link",
+		})
+		return
+	}
+
+	title, err := internal.ParseHTMLTitle(resp.Body)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:  http.StatusBadRequest,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: title})
+
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -543,6 +600,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 		r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
 		r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
 
+		r.Get("/api/v1/fetch-title", fetchWebPageTitle)
 	})
 
 }
