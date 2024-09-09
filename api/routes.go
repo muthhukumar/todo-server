@@ -572,6 +572,8 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "max-age=315360000")
+
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: title})
 
 }
