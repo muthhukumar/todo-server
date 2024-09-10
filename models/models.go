@@ -13,6 +13,7 @@ type Task struct {
 	IsImportant bool   `json:"is_important"`
 	MarkedToday string `json:"marked_today"`
 	DueDate     string `json:"due_date"`
+	Metadata    string `json:"metadata"`
 }
 
 type Response struct {

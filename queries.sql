@@ -9,3 +9,4 @@ CREATE TABLE tasks (
 );
 
 alter table tasks add column due_date VARCHAR(255) NOT NULL DEFAULT '';
+alter table tasks add column metadata VARCHAR(255) NOT NULL DEFAULT '';

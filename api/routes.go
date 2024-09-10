@@ -73,7 +73,7 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 
 	var task models.Task
 
-	if err := row.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate); err != nil {
+	if err := row.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata); err != nil {
 		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Task with ID '%v' not found", id), Status: http.StatusNotFound, Code: internal.ErrorCodeErrorMessage})
 		return
 	}
@@ -164,7 +164,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate); err != nil {
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
 
 			return
@@ -271,6 +271,54 @@ func (h *HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated Task successfully."})
+}
+
+func (h *HandlerFn) updateTaskMetadata(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid task ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+	}
+
+	var task models.Task
+
+	if err := json.NewDecoder(r.Body).Decode(&task); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	// validate := validator.New()
+	//
+	// err := validate.Struct(task)
+	//
+	// if err != nil {
+	// 	utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+	// 		Status:        http.StatusBadRequest,
+	// 		Code:          internal.ErrorCodeValidationFailed,
+	// 		Message:       "One or more fields are invalid",
+	// 		InvalidFields: internal.ConstructInvalidFieldData(err)})
+	//
+	// 	return
+	// }
+
+	query := "UPDATE tasks SET metadata=$1 WHERE id=$2"
+
+	result, err := h.DB.Exec(query, task.Metadata, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Updating task with ID {%v} failed.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Updating task with ID {%v} failed. Task may not be available.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated Task metadata successfully."})
 }
 
 func (h *HandlerFn) deleteTask(w http.ResponseWriter, r *http.Request) {
@@ -611,6 +659,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 		r.Post("/api/v1/task/create", routeHandler.createTask)
 		r.Get("/api/v1/task/{id}", routeHandler.getTask)
 		r.Post("/api/v1/task/{id}", routeHandler.updateTask)
+		r.Post("/api/v1/task/{id}/metadata", routeHandler.updateTaskMetadata)
 		r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
 		r.Post("/api/v1/task/{id}/add/due-date", routeHandler.addDueDate)
 
