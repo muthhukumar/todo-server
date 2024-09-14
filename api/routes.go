@@ -588,7 +588,7 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	var chromePath string
 
 	if chromePath = os.Getenv("CHROME_PATH"); chromePath == "" {
-		chromePath = "/opt/render/project/.render/chrome/opt/google/chrome"
+		chromePath = "/opt/render/project/.render/chrome/opt/google/chrome/bin/google-chrome"
 	}
 
 	// Create an ExecAllocator with the Chrome path
