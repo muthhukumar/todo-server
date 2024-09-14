@@ -53,6 +53,7 @@ type ErrorResponseV2 struct {
 	Message       string         `json:"message"`
 	RequestId     string         `json:"request_id"`
 	InvalidFields []InvalidField `json:"invalid_fields"`
+	Error         string         `json:"error"`
 }
 
 type InvalidField struct {

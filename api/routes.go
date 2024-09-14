@@ -1,11 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"text/template"
 	"time"
@@ -21,6 +23,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
+
+	"github.com/chromedp/chromedp"
 )
 
 type HandlerFn struct {
@@ -569,6 +573,7 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
+
 	url := r.URL.Query().Get("url")
 
 	if url == "" {
@@ -576,6 +581,49 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 			Status:  http.StatusBadRequest,
 			Message: "URL is not provided",
 		})
+
+		return
+	}
+
+	chromePath := os.Getenv("CHROME_PATH")
+
+	utils.Assert(chromePath != "", "Chrome path ENV is not set")
+
+	// Create an ExecAllocator with the Chrome path
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.ExecPath(chromePath),
+	)
+
+	// Create a new context with the custom Chrome path
+	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	var pageTitle string
+
+	err := chromedp.Run(ctx,
+		chromedp.Navigate(url),
+		chromedp.WaitReady("body"),                      // Wait until the body is visible
+		chromedp.Sleep(2*time.Second),                   // Wait a bit for JS execution
+		chromedp.Evaluate(`document.title`, &pageTitle), // Evaluate JavaScript to get the updated title
+	)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
+			Status:  http.StatusBadRequest,
+			Message: "Fetching Title using headless browser failed",
+			Error:   err.Error(),
+		})
+
+		return
+	}
+
+	if pageTitle != "" {
+		w.Header().Set("Cache-Control", "max-age=10, must-revalidate")
+
+		utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
 
 		return
 	}
