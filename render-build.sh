@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
 # exit on error
-
-go build ./cmd/todo-server/main.go
-
-pwd
-
 set -o errexit
 
 STORAGE_DIR=/opt/render/project/.render
@@ -16,7 +11,9 @@ if [[ ! -d $STORAGE_DIR/chrome ]]; then
   wget -P ./ https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
   dpkg -x ./google-chrome-stable_current_amd64.deb $STORAGE_DIR/chrome
   rm ./google-chrome-stable_current_amd64.deb
+  cd $HOME/project/go/src/github.com/muthhukumar/todo-server
 else
   echo "...Using Chrome from cache"
 fi
 
+go build ./cmd/todo-server/main.go
