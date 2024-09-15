@@ -2,7 +2,7 @@
 # exit on error
 set -o errexit
 
-STORAGE_DIR=/opt/render/project/.render
+STORAGE_DIR=/opt/render/project/go/src/github.com/muthhukumar/todo-server/.render
 
 if [[ ! -d $STORAGE_DIR/chrome ]]; then
   echo "...Downloading Chrome"
