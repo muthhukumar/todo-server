@@ -583,22 +583,25 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	row := h.DB.QueryRow("Select title, is_valid from url_titles where url=$1", url)
+	row := h.DB.QueryRow("Select title, is_valid, url from url_titles where url=$1", url)
 
 	var url_title models.URLTitle
 
-	_ = row.Scan(&url_title.Title, &url_title.IsValid)
+	_ = row.Scan(&url_title.Title, &url_title.IsValid, &url_title.URL)
 
-	if url_title.Title != "" && url_title.IsValid {
+	if url_title.URL != "" && !url_title.IsValid {
+		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "This URL is marked as Invalid."})
+		return
+	}
+
+	if url_title.Title != "" {
 		w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
 
 		utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
 		return
 	}
 
-	var chromePath string
-
-	chromePath = os.Getenv("CHROME_PATH")
+	chromePath := os.Getenv("CHROME_PATH")
 
 	utils.Assert(chromePath != "", "Chrome Path ENV value is not set")
 
@@ -622,6 +625,13 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err != nil {
+		query := `
+	INSERT INTO url_titles (title, url, is_valid)
+	VALUES ($1, $2, $3);
+`
+
+		_ = h.DB.QueryRow(query, pageTitle, url, false)
+
 		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
 			Status:  http.StatusBadRequest,
 			Message: "Fetching Title using headless browser failed",
@@ -632,21 +642,23 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if pageTitle == "" {
+		query := `
+	INSERT INTO url_titles (title, url, is_valid)
+	VALUES ($1, $2, $3);
+`
+
+		_ = h.DB.QueryRow(query, pageTitle, url, false)
+
 		utils.JsonResponse(w, http.StatusNotFound, models.MsgResponse{Message: "Page title not found."})
 		return
 	}
 
 	query := `
-	INSERT INTO url_titles (title, url)
-	VALUES ($1, $2);
+	INSERT INTO url_titles (title, url, is_valid)
+	VALUES ($1, $2, $3);
 `
 
-	row = h.DB.QueryRow(query, pageTitle, url)
-
-	if err := row.Err(); err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
-		return
-	}
+	_ = h.DB.QueryRow(query, pageTitle, url, true)
 
 	w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
 
