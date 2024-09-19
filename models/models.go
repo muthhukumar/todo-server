@@ -71,3 +71,12 @@ func (e *EmailTemplate) GetMessage() (msg []byte) {
 
 	return
 }
+
+type URLTitle struct {
+	ID        int    `json:"id"`
+	Title     string `json:"title"`
+	URL       string `json:"url"`
+	IsValid   bool   `json:"is_valid"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}

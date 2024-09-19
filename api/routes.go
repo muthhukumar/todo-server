@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -572,8 +571,7 @@ func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(quotes)})
 }
 
-func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
-
+func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 
 	if url == "" {
@@ -585,18 +583,27 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var chromePath string
+	row := h.DB.QueryRow("Select title, is_valid from url_titles where url=$1", url)
 
-	if chromePath = os.Getenv("CHROME_PATH"); chromePath == "" {
-		chromePath = "/opt/render/project/go/src/github.com/muthhukumar/todo-server/.render/chrome/opt/google/chrome/google-chrome"
+	var url_title models.URLTitle
+
+	_ = row.Scan(&url_title.Title, &url_title.IsValid)
+
+	if url_title.Title != "" && url_title.IsValid {
+		utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
+		return
 	}
 
-	// Create an ExecAllocator with the Chrome path
+	var chromePath string
+
+	chromePath = os.Getenv("CHROME_PATH")
+
+	utils.Assert(chromePath != "", "Chrome Path ENV value is not set")
+
 	opts := append(chromedp.DefaultExecAllocatorOptions[:],
 		chromedp.ExecPath(chromePath),
 	)
 
-	// Create a new context with the custom Chrome path
 	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
 	defer cancel()
 
@@ -607,9 +614,9 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 
 	err := chromedp.Run(ctx,
 		chromedp.Navigate(url),
-		chromedp.WaitReady("body"),                      // Wait until the body is visible
-		chromedp.Sleep(2*time.Second),                   // Wait a bit for JS execution
-		chromedp.Evaluate(`document.title`, &pageTitle), // Evaluate JavaScript to get the updated title
+		chromedp.WaitReady("body"),
+		chromedp.Sleep(2*time.Second),
+		chromedp.Evaluate(`document.title`, &pageTitle),
 	)
 
 	if err != nil {
@@ -622,74 +629,24 @@ func fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if pageTitle != "" {
-		w.Header().Set("Cache-Control", "max-age=10, must-revalidate")
-
-		utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
-
+	if pageTitle == "" {
+		utils.JsonResponse(w, http.StatusNotFound, models.MsgResponse{Message: "Page title not found."})
 		return
 	}
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
-			Status:  http.StatusInternalServerError,
-			Message: "Creating request failed.",
-		})
+	query := `
+	INSERT INTO url_titles (title, url)
+	VALUES ($1, $2);
+`
 
+	row = h.DB.QueryRow(query, pageTitle, url)
+
+	if err := row.Err(); err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
 		return
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
-	req.Header.Set("DNT", "1")
-	req.Header.Set("Connection", "keep-alive")
-	req.Header.Set("Upgrade-Insecure-Requests", "1")
-
-	resp, err := http.DefaultClient.Do(req)
-
-	if err != nil {
-		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.ErrorResponseV2{
-			Status:  resp.StatusCode,
-			Message: "Unable to fetch title of the link",
-		})
-		return
-	}
-
-	body, err := io.ReadAll(resp.Body)
-
-	if err != nil {
-		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.ErrorResponseV2{
-			Status:  http.StatusUnprocessableEntity,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	title, err := internal.ExtractTitle(string(body))
-
-	if err != nil {
-		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
-			Status:  http.StatusBadRequest,
-			Message: err.Error(),
-		})
-		return
-	}
-
-	w.Header().Set("Cache-Control", "max-age=10, must-revalidate")
-
-	utils.JsonResponse(w, http.StatusOK, models.Response{Data: title})
-
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
@@ -717,7 +674,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 		r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
 		r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
 
-		r.Get("/api/v1/fetch-title", fetchWebPageTitle)
+		r.Get("/api/v1/fetch-title", routeHandler.fetchWebPageTitle)
 	})
 
 }

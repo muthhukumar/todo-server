@@ -10,3 +10,13 @@ CREATE TABLE tasks (
 
 alter table tasks add column due_date VARCHAR(255) NOT NULL DEFAULT '';
 alter table tasks add column metadata VARCHAR(255) NOT NULL DEFAULT '';
+
+CREATE TABLE url_titles (
+    id SERIAL PRIMARY KEY,
+    url TEXT NOT NULL UNIQUE,
+    title TEXT,
+    is_valid BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
