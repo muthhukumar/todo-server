@@ -590,6 +590,8 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	_ = row.Scan(&url_title.Title, &url_title.IsValid)
 
 	if url_title.Title != "" && url_title.IsValid {
+		w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
+
 		utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
 		return
 	}
@@ -645,6 +647,8 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
 		return
 	}
+
+	w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
 
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
 }
