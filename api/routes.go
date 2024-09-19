@@ -583,6 +583,8 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
+
 	row := h.DB.QueryRow("Select title, is_valid, url from url_titles where url=$1", url)
 
 	var url_title models.URLTitle
@@ -595,7 +597,6 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if url_title.Title != "" {
-		w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
 
 		utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
 		return
@@ -659,8 +660,6 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 `
 
 	_ = h.DB.QueryRow(query, pageTitle, url, true)
-
-	w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
 
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
 }
