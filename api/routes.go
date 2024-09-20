@@ -650,7 +650,7 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 
 		_ = h.DB.QueryRow(query, pageTitle, url, false)
 
-		utils.JsonResponse(w, http.StatusNotFound, models.MsgResponse{Message: "Page title not found."})
+		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "Page title not found."})
 		return
 	}
 
