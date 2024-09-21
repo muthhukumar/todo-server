@@ -2,18 +2,25 @@ package internal
 
 import (
 	"bytes"
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"text/tabwriter"
 	"time"
 	"todo-server/backup"
 	data "todo-server/data/quotes"
+	"todo-server/db"
 	templates "todo-server/internal/templates/today-tasks"
 	"todo-server/models"
+	"todo-server/utils"
 
+	"github.com/chromedp/chromedp"
 	"github.com/robfig/cron/v3"
 )
+
+// var jobMutex sync.Mutex
 
 func sendQuotes(emailAuth models.EmailAuth) {
 	quotes := data.GetRandomQuotes(data.GetQuotes(), 2)
@@ -40,8 +47,88 @@ func sendQuotes(emailAuth models.EmailAuth) {
 	log.Println("Email send for quote of the day", email_sent, time.Now())
 }
 
+// ANSI color codes
+const (
+	reset   = "\033[0m"
+	red     = "\033[31m"
+	green   = "\033[32m"
+	yellow  = "\033[33m"
+	blue    = "\033[34m"
+	magenta = "\033[35m"
+)
+
+func SyncURLTitle(dc *sql.DB) {
+	urlTitles, err := db.GetAllURLTitles(dc)
+
+	log.Println("Syncing URL Titles...")
+
+	if err != nil {
+		log.Println("Failed to sync url titles because", err)
+		return
+	}
+
+	chromePath := os.Getenv("CHROME_PATH")
+
+	utils.Assert(chromePath != "", "Chrome Path ENV value is not set")
+
+	opts := append(chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.ExecPath(chromePath),
+	)
+
+	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
+	defer cancel()
+
+	ctx, cancel := chromedp.NewContext(allocCtx)
+	defer cancel()
+
+	for _, urlTitle := range urlTitles {
+		var pageTitle string
+
+		log.Printf("Syncing %s", urlTitle.URL)
+
+		err := chromedp.Run(ctx,
+			chromedp.Navigate(urlTitle.URL),
+			chromedp.WaitReady("body"),
+			chromedp.Evaluate(`document.title`, &pageTitle),
+		)
+
+		if err != nil && pageTitle == "" {
+			log.Printf("Failed to fetch title. Got %s%s%s\n", reset, err.Error(), reset)
+			continue
+		}
+
+		if urlTitle.Title == pageTitle {
+			log.Printf("`%s` and `%s` are same\n", urlTitle.Title, pageTitle)
+			continue
+		}
+
+		if pageTitle == "" {
+			log.Printf("%s%s%s URL title not available. Got empty", red, urlTitle.URL, reset)
+			continue
+		}
+
+		log.Printf("%sSaving new title%s: %s`%s`%s for URL: %s%s%s\n", magenta, reset, green, pageTitle, reset, blue, urlTitle.URL, reset)
+
+		_ = db.SaveOrUpdateURLTitle(dc, pageTitle, urlTitle.URL, true)
+
+	}
+
+	// TODO: log time it took to complete this action.
+	log.Println("Syncing completed.")
+
+}
+
 func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	c := cron.New(cron.WithSeconds())
+
+	c.AddFunc("0 18 30 * * *", func() {
+		// if !jobMutex.TryLock() {
+		// 	log.Printf("%sPrevious job is still running skipping this execution%s\n", red, reset)
+		// 	return
+		// }
+		// defer jobMutex.Unlock()
+		SyncURLTitle(db)
+	})
 
 	c.AddFunc("0 30 1 * * *", func() {
 		sendQuotes(emailAuth)

@@ -1,16 +1,16 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net/http"
-	"os"
 	"strconv"
 	"text/template"
 	"time"
+	"todo-server/chrome"
 	data "todo-server/data/quotes"
+	"todo-server/db"
 	"todo-server/internal"
 	"todo-server/models"
 
@@ -22,8 +22,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-playground/validator/v10"
-
-	"github.com/chromedp/chromedp"
 )
 
 type HandlerFn struct {
@@ -585,11 +583,7 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "public, max-age=604800") // 1week
 
-	row := h.DB.QueryRow("Select title, is_valid, url from url_titles where url=$1", url)
-
-	var url_title models.URLTitle
-
-	_ = row.Scan(&url_title.Title, &url_title.IsValid, &url_title.URL)
+	url_title, _ := db.GetURLTitle(h.DB, url)
 
 	if url_title.URL != "" && !url_title.IsValid {
 		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "This URL is marked as Invalid."})
@@ -597,41 +591,15 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if url_title.Title != "" {
-
 		utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
+
 		return
 	}
 
-	chromePath := os.Getenv("CHROME_PATH")
-
-	utils.Assert(chromePath != "", "Chrome Path ENV value is not set")
-
-	opts := append(chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.ExecPath(chromePath),
-	)
-
-	allocCtx, cancel := chromedp.NewExecAllocator(context.Background(), opts...)
-	defer cancel()
-
-	ctx, cancel := chromedp.NewContext(allocCtx)
-	defer cancel()
-
-	var pageTitle string
-
-	err := chromedp.Run(ctx,
-		chromedp.Navigate(url),
-		chromedp.WaitReady("body"),
-		chromedp.Sleep(2*time.Second),
-		chromedp.Evaluate(`document.title`, &pageTitle),
-	)
+	pageTitle, err := chrome.GetTitleFromURLUsingChrome(url)
 
 	if err != nil {
-		query := `
-	INSERT INTO url_titles (title, url, is_valid)
-	VALUES ($1, $2, $3);
-`
-
-		_ = h.DB.QueryRow(query, pageTitle, url, false)
+		db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
 
 		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
 			Status:  http.StatusBadRequest,
@@ -643,25 +611,22 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if pageTitle == "" {
-		query := `
-	INSERT INTO url_titles (title, url, is_valid)
-	VALUES ($1, $2, $3);
-`
-
-		_ = h.DB.QueryRow(query, pageTitle, url, false)
+		db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
 
 		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "Page title not found."})
 		return
 	}
 
-	query := `
-	INSERT INTO url_titles (title, url, is_valid)
-	VALUES ($1, $2, $3);
-`
-
-	_ = h.DB.QueryRow(query, pageTitle, url, true)
+	db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, true)
 
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
+}
+
+func (h *HandlerFn) syncTitle(w http.ResponseWriter, r *http.Request) {
+	internal.SyncURLTitle(h.DB)
+
+	w.Write([]byte("OK"))
+	return
 }
 
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
@@ -690,6 +655,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 		r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
 
 		r.Get("/api/v1/fetch-title", routeHandler.fetchWebPageTitle)
+		r.Get("/api/v1/title/sync", routeHandler.syncTitle)
 	})
 
 }
