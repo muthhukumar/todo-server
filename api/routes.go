@@ -585,7 +585,7 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 
 	url_title, _ := db.GetURLTitle(h.DB, url)
 
-	if url_title != nil && url_title.Title != "" {
+	if url_title != nil {
 		if url_title.IsValid {
 			utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
 		} else {
