@@ -210,11 +210,11 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 	utils.Assert(len(newTask.Name) > 0, "Task name length should be greater than 0")
 
 	query := `
-	INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date)
-	VALUES ($1, $2, $3, $4, $5, $6);
+	INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata)
+	VALUES ($1, $2, $3, $4, $5, $6, $7);
 `
 
-	rows := h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate)
+	rows := h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata)
 
 	if err := rows.Err(); err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, "Creating Task failed.")
