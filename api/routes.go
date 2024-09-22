@@ -585,14 +585,12 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 
 	url_title, _ := db.GetURLTitle(h.DB, url)
 
-	if url_title.URL != "" && !url_title.IsValid {
-		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "This URL is marked as Invalid."})
-		return
-	}
-
-	if url_title.Title != "" {
-		utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
-
+	if url_title != nil && url_title.Title != "" {
+		if url_title.IsValid {
+			utils.JsonResponse(w, http.StatusOK, models.Response{Data: url_title.Title})
+		} else {
+			utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "This URL is marked as Invalid."})
+		}
 		return
 	}
 

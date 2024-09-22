@@ -62,6 +62,12 @@ func SyncURLTitle(dc *sql.DB) {
 
 	log.Println("Syncing URL Titles...")
 
+	if urlTitles == nil {
+		log.Printf("No urls found")
+
+		return
+	}
+
 	if err != nil {
 		log.Println("Failed to sync url titles because", err)
 		return
