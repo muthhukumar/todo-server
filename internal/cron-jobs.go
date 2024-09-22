@@ -88,6 +88,10 @@ func SyncURLTitle(dc *sql.DB) {
 	defer cancel()
 
 	for _, urlTitle := range urlTitles {
+		if urlTitle.IsValid && urlTitle.Title != "" {
+			continue
+		}
+
 		var pageTitle string
 
 		log.Printf("Syncing %s", urlTitle.URL)
