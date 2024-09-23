@@ -20,8 +20,6 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-// var jobMutex sync.Mutex
-
 func sendQuotes(emailAuth models.EmailAuth) {
 	quotes := data.GetRandomQuotes(data.GetQuotes(), 2)
 
@@ -129,27 +127,21 @@ func SyncURLTitle(dc *sql.DB) {
 }
 
 func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
-	c := cron.New(cron.WithSeconds())
+	istLocation, _ := time.LoadLocation("Asia/Kolkata")
 
-	c.AddFunc("0 18 30 * * *", func() {
-		// if !jobMutex.TryLock() {
-		// 	log.Printf("%sPrevious job is still running skipping this execution%s\n", red, reset)
-		// 	return
-		// }
-		// defer jobMutex.Unlock()
+	c := cron.New(cron.WithSeconds(), cron.WithLocation(istLocation))
+
+	c.AddFunc("0 0 0 * * *", func() {
 		SyncURLTitle(db)
 	})
 
-	c.AddFunc("0 30 1 * * *", func() {
-		sendQuotes(emailAuth)
-	})
-
+	// Every day morning 7:00 AM
 	c.AddFunc("0 0 7 * * *", func() {
 		sendQuotes(emailAuth)
 	})
 
-	// Every day afternoon 2:30
-	c.AddFunc("0 0 9 * * *", func() {
+	// Every day morning 3:00 AM
+	c.AddFunc("0 0 3 * * *", func() {
 		backup.BackupTasks(db, emailAuth)
 	})
 
@@ -157,12 +149,8 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		sendQuotes(emailAuth)
 	})
 
-	c.AddFunc("0 0 11 * * *", func() {
-		sendQuotes(emailAuth)
-	})
-
-	// Today's Tasks
-	c.AddFunc("0 30 1 * * *", func() {
+	// Today's Tasks. Every morning 7:00 AM
+	c.AddFunc("0 0 7 * * *", func() {
 		today := time.Now().Format("2006-01-02")
 
 		query := "select name, due_date from tasks where due_date = $1 and completed = false ORDER BY created_at DESC"
@@ -210,7 +198,8 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		log.Println("Email send", email_sent, time.Now())
 	})
 
-	c.AddFunc("0 30 16 * * *", func() {
+	// Everyday night 10:00 PM
+	c.AddFunc("0 0 22 * * *", func() {
 		// TODO: fix this completed on date issue. Probably have to default the value to empty string instead of null. Have to change the table schema
 		query := "SELECT name FROM tasks WHERE completed = true AND DATE(NULLIF(completed_on, '')) = CURRENT_DATE;"
 
