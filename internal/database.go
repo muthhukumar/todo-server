@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"log"
 	"os"
+	"time"
 	"todo-server/utils"
 
 	_ "github.com/lib/pq"
@@ -19,6 +20,9 @@ func SetupDatabase() *sql.DB {
 	// db.SetMaxOpenConns(5)
 	// db.SetMaxIdleConns(5)
 	// db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
