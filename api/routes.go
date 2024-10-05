@@ -627,6 +627,38 @@ func (h *HandlerFn) syncTitle(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func takeScreenshot(w http.ResponseWriter, r *http.Request) {
+	url := r.URL.Query().Get("url")
+	format := r.URL.Query().Get("format")
+
+	if url == "" {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:  http.StatusBadRequest,
+			Message: "URL is not provided",
+		})
+
+		return
+	}
+
+	base64Str, buf, err := chrome.ScreenshotWebsite(url)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.MsgResponse{Message: "Failed to take screenshot of the website"})
+		return
+	}
+
+	if format == "" || format == "image" {
+
+		w.Header().Set("Content-Type", "image/png")
+		w.Header().Set("Content-Disposition", "inline; filename=screenshot.png")
+
+		w.Write(buf)
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: base64Str})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -654,6 +686,7 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 		r.Get("/api/v1/fetch-title", routeHandler.fetchWebPageTitle)
 		r.Get("/api/v1/title/sync", routeHandler.syncTitle)
+		r.Get("/api/v1/url/screenshot", takeScreenshot)
 	})
 
 }

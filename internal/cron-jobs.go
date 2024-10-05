@@ -145,6 +145,7 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		backup.BackupTasks(db, emailAuth)
 	})
 
+	// Every day morning 9:00 AM
 	c.AddFunc("0 0 9 * * *", func() {
 		sendQuotes(emailAuth)
 	})
