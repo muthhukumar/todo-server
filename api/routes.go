@@ -599,7 +599,7 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
 
-		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
+		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.ErrorResponseV2{
 			Status:  http.StatusBadRequest,
 			Message: "Fetching Title using headless browser failed",
 			Error:   err.Error(),
