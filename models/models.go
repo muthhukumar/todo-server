@@ -80,3 +80,15 @@ type URLTitle struct {
 	CreatedAt string `json:"created_at"`
 	UpdatedAt string `json:"updated_at"`
 }
+
+type Log struct {
+	ID        int    `json:"id"`
+	Log       string `json:"log" validate:"required,min=3,max=1000"`
+	Level     string `json:"level" validate:"required"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+}
+
+type LogPayload struct {
+	Data []Log `json:"data"`
+}

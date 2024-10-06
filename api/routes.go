@@ -157,7 +157,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(query, args...)
 
 	if err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, err.Error())
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
 		return
 	}
 
@@ -627,6 +627,83 @@ func (h *HandlerFn) syncTitle(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func (h *HandlerFn) createLog(w http.ResponseWriter, r *http.Request) {
+	var payload models.LogPayload
+
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	fmt.Println(payload)
+
+	// validate := validator.New()
+	//
+	// err := validate.Struct(newLogs)
+	//
+	// if err != nil {
+	// 	utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+	// 		Status:        http.StatusBadRequest,
+	// 		Code:          internal.ErrorCodeValidationFailed,
+	// 		Message:       "One or more fields are invalid",
+	// 		InvalidFields: internal.ConstructInvalidFieldData(err)})
+	//
+	// 	return
+	// }
+
+	query := "INSERT INTO log (log, level) VALUES "
+	values := []interface{}{}
+	for i, logEntry := range payload.Data {
+		query += fmt.Sprintf("($%d, $%d),", i*2+1, i*2+2)
+		values = append(values, logEntry.Log, logEntry.Level)
+	}
+
+	fmt.Println(query, values)
+
+	query = query[:len(query)-1]
+
+	_, err := h.DB.Exec(query, values...)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusCreated, models.MsgResponse{Message: "Logged successfully"})
+}
+
+func (h *HandlerFn) logs(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.DB.Query("select * from log ORDER BY created_at DESC")
+	var logs []models.Log
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
+		return
+	}
+
+	for rows.Next() {
+		var log models.Log
+		if err := rows.Scan(&log.ID, &log.Log, &log.Level, &log.CreatedAt, &log.UpdatedAt); err != nil {
+			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
+
+			return
+		}
+		logs = append(logs, log)
+	}
+	defer rows.Close()
+
+	if len(logs) == 0 {
+		utils.JsonResponse(w, http.StatusOK, models.Response{Data: []models.Log{}})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: logs})
+
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -654,6 +731,9 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 		r.Get("/api/v1/fetch-title", routeHandler.fetchWebPageTitle)
 		r.Get("/api/v1/title/sync", routeHandler.syncTitle)
+
+		r.Get("/api/v1/log", routeHandler.logs)
+		r.Post("/api/v1/log", routeHandler.createLog)
 	})
 
 }

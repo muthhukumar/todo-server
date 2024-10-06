@@ -264,6 +264,18 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		log.Println("Email send for completed tasks", email_sent, time.Now())
 	})
 
+	c.AddFunc("0 0 0 */2 * *", func() {
+		_, err := db.Query("TRUNCATE TABLE log")
+
+		if err != nil {
+			log.Println("Failed to delete logs from db")
+
+			return
+		}
+
+		log.Println("Deleted logs successfully")
+	})
+
 	c.Start()
 
 	log.Println("Cron jobs have been set up successfully.", time.Now())
