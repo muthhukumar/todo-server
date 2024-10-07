@@ -599,7 +599,7 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
 
-		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.ErrorResponseV2{
+		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
 			Status:  http.StatusBadRequest,
 			Message: "Fetching Title using headless browser failed",
 			Error:   err.Error(),
@@ -636,8 +636,6 @@ func (h *HandlerFn) createLog(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println(payload)
-
 	// validate := validator.New()
 	//
 	// err := validate.Struct(newLogs)
@@ -652,11 +650,13 @@ func (h *HandlerFn) createLog(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	query := "INSERT INTO log (log, level) VALUES "
+	fmt.Println(payload.Data)
+
+	query := "INSERT INTO log (log, level, created_at) VALUES "
 	values := []interface{}{}
 	for i, logEntry := range payload.Data {
-		query += fmt.Sprintf("($%d, $%d),", i*2+1, i*2+2)
-		values = append(values, logEntry.Log, logEntry.Level)
+		query += fmt.Sprintf("($%d, $%d, $%d),", i*3+1, i*3+2, i*3+3)
+		values = append(values, logEntry.Log, logEntry.Level, logEntry.CreatedAt)
 	}
 
 	fmt.Println(query, values)
