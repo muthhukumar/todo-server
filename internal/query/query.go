@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func GetTasksQuery(filter string, searchTerm string, showCompleted string, random string, size int) (string, []interface{}) {
+func GetTasksQuery(filter string, searchTerm string, showCompleted string, size int) (string, []interface{}) {
 	var query string
 	var args []interface{} = []interface{}{}
 	var completedFilter string
@@ -59,11 +59,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, rando
 		args = append(args, searchTerm)
 	}
 
-	if random == "true" {
-		query += " ORDER BY RANDOM() "
-	} else {
-		query += " ORDER BY created_at DESC"
-	}
+	query += " ORDER BY created_at DESC"
 
 	if size > 0 {
 		query += fmt.Sprintf(" LIMIT $%d ", len(args)+1)
