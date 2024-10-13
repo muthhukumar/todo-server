@@ -211,18 +211,21 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 	INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata)
-	VALUES ($1, $2, $3, $4, $5, $6, $7);
+	VALUES ($1, $2, $3, $4, $5, $6, $7) 
+	RETURNING id;
 `
 
-	rows := h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata)
+	var taskID int
 
-	if err := rows.Err(); err != nil {
+	err = h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata).Scan(&taskID)
+
+	if err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, "Creating Task failed.")
 
 		return
 	}
 
-	utils.JsonResponse(w, http.StatusCreated, models.MsgResponse{Message: "Task created successfully"})
+	utils.JsonResponse(w, http.StatusCreated, models.CreateTaskResponse{Message: "Task created successfully", ID: taskID})
 }
 
 func (h *HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
@@ -650,8 +653,6 @@ func (h *HandlerFn) createLog(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
-	fmt.Println(payload.Data)
-
 	query := "INSERT INTO log (log, level, created_at) VALUES "
 	values := []interface{}{}
 	for i, logEntry := range payload.Data {
@@ -659,7 +660,24 @@ func (h *HandlerFn) createLog(w http.ResponseWriter, r *http.Request) {
 		values = append(values, logEntry.Log, logEntry.Level, logEntry.CreatedAt)
 	}
 
-	fmt.Println(query, values)
+	var logStr string
+
+	for _, item := range payload.Data {
+		if item.Level == "error" || item.Level == "ERROR" {
+			logStr += fmt.Sprintf("%s | %s | %s\n", time.Now().Format("Monday, January 2 2006"), item.Level, item.Log)
+			logStr += "-----------------------------------------------\n"
+		}
+	}
+
+	emailAuth := internal.LoadEmailCredentials()
+
+	template := models.EmailTemplate{
+		To:      []string{emailAuth.ToEmail},
+		Subject: fmt.Sprintf("Critical Error Log: [MKTodo] - [%s]", time.Now().Format("Monday, January 2 2006")),
+		Body:    logStr,
+	}
+
+	_ = internal.SendEmail(emailAuth, template)
 
 	query = query[:len(query)-1]
 

@@ -29,6 +29,11 @@ type MsgResponse struct {
 	Message string `json:"message"`
 }
 
+type CreateTaskResponse struct {
+	Message string `json:"message"`
+	ID      int    `json:"id"`
+}
+
 type FieldValidation struct {
 	IsValid      bool   `json:"is_valid"`
 	Field        string `json:"field"`
