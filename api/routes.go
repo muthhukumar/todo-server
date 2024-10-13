@@ -669,15 +669,17 @@ func (h *HandlerFn) createLog(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	emailAuth := internal.LoadEmailCredentials()
+	if logStr != "" {
+		emailAuth := internal.LoadEmailCredentials()
 
-	template := models.EmailTemplate{
-		To:      []string{emailAuth.ToEmail},
-		Subject: fmt.Sprintf("Critical Error Log: [MKTodo] - [%s]", time.Now().Format("Monday, January 2 2006")),
-		Body:    logStr,
+		template := models.EmailTemplate{
+			To:      []string{emailAuth.ToEmail},
+			Subject: fmt.Sprintf("Critical Error Log: [MKTodo] - [%s]", time.Now().Format("Monday, January 2 2006")),
+			Body:    logStr,
+		}
+
+		_ = internal.SendEmail(emailAuth, template)
 	}
-
-	_ = internal.SendEmail(emailAuth, template)
 
 	query = query[:len(query)-1]
 
