@@ -13,27 +13,64 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 	// Determine the completed filter condition based on the showCompleted parameter
 	switch showCompleted {
 	case "true":
-		completedFilter = " "
+		completedFilter = " " // No filter for completed tasks
 	case "false":
-		completedFilter = " completed = false "
+		completedFilter = " t.completed = false " // Explicitly refer to tasks table's completed column
 	default:
 		completedFilter = " " // No filter for completed status
 	}
 
 	switch filter {
 	case "":
-		query = "SELECT * FROM tasks"
+		query = `
+		SELECT 
+			t.*,
+			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
+			COALESCE(COUNT(st.id), 0) AS subtask_count
+		FROM 
+			tasks t
+		LEFT JOIN 
+			sub_tasks st ON st.task_id = t.id  
+		`
+
 	case "my-day":
 		today := time.Now().Format("2006-01-02")
-		query = "SELECT * FROM tasks WHERE ((marked_today != '' AND DATE(marked_today) = $1) OR (due_date != '' AND DATE(due_date) = $1)) "
+		query = `
+		SELECT 
+			t.*,
+			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
+			COALESCE(COUNT(st.id), 0) AS subtask_count
+		FROM 
+			tasks t
+		LEFT JOIN 
+			sub_tasks st ON st.task_id = t.id
+		WHERE ((marked_today != '' AND DATE(marked_today) = $1) OR (due_date != '' AND DATE(due_date) = $1)) `
 		args = append(args, today)
 	case "important":
-		query = "SELECT * FROM tasks where is_important = true"
+		query = `
+		SELECT 
+			t.*,
+			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
+			COALESCE(COUNT(st.id), 0) AS subtask_count
+		FROM 
+			tasks t
+		LEFT JOIN 
+			sub_tasks st ON st.task_id = t.id 
+		WHERE t.is_important = true
+		`
 	default:
-		query = "SELECT * FROM tasks"
+		query = `
+		SELECT 
+			t.*,
+			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
+			COALESCE(COUNT(st.id), 0) AS subtask_count
+		FROM 
+			tasks t
+		LEFT JOIN 
+			sub_tasks st ON st.task_id = t.id
+		`
 	}
 
-	// If show completed is true then we don't have to add the filter.
 	if showCompleted != "" && showCompleted == "false" {
 		if len(args) > 0 || filter == "important" || filter == "my-day" {
 			query += " AND"
@@ -59,7 +96,8 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 		args = append(args, searchTerm)
 	}
 
-	query += " ORDER BY created_at DESC"
+	query += " GROUP BY t.id "
+	query += " ORDER BY t.created_at DESC"
 
 	if size > 0 {
 		query += fmt.Sprintf(" LIMIT $%d ", len(args)+1)
