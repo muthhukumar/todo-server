@@ -28,3 +28,15 @@ CREATE TABLE log (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE sub_tasks (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    completed BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    task_id INT NOT NULL,  -- Foreign key to reference the tasks table
+    CONSTRAINT fk_task
+        FOREIGN KEY(task_id) 
+        REFERENCES tasks(id) 
+        ON DELETE CASCADE
+);
+

@@ -68,13 +68,60 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	query := "select * from tasks where ID=$1"
+	query := `
+	SELECT 
+    tasks.*,  -- Select all columns from tasks without renaming
+    sub_tasks.id AS subtask_id,  -- Include subtask-specific fields with different names
+    sub_tasks.name AS subtask_name,
+    sub_tasks.completed AS subtask_completed,
+    sub_tasks.created_at AS subtask_created_at
+FROM 
+    tasks
+LEFT JOIN 
+    sub_tasks ON sub_tasks.task_id = tasks.id
+WHERE 
+    tasks.id = $1
+ORDER BY 
+    sub_tasks.created_at ASC;`
 
-	row := h.DB.QueryRow(query, id)
+	rows, err := h.DB.Query(query, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to fetch tasks", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+	defer rows.Close()
 
 	var task models.Task
+	var subTasks []models.SubTask
 
-	if err := row.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata); err != nil {
+	for rows.Next() {
+		var subTaskID sql.NullInt64
+		var subTaskName sql.NullString
+		var subTaskCompleted sql.NullBool
+		var subTaskCreatedAt sql.NullTime
+
+		if err := rows.Scan(
+			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt,
+			&task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata,
+			&subTaskID, &subTaskName, &subTaskCompleted, &subTaskCreatedAt); err != nil {
+		}
+
+		if subTaskID.Valid {
+			subTask := models.SubTask{
+				ID:        int(subTaskID.Int64),
+				Name:      subTaskName.String,
+				Completed: subTaskCompleted.Bool,
+				CreatedAt: subTaskCreatedAt.Time,
+			}
+			subTasks = append(subTasks, subTask)
+		}
+	}
+
+	task.SubTasks = subTasks
+
+	if err := rows.Err(); err != nil {
 		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Task with ID '%v' not found", id), Status: http.StatusNotFound, Code: internal.ErrorCodeErrorMessage})
 		return
 	}
@@ -276,6 +323,55 @@ func (h *HandlerFn) updateTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated Task successfully."})
 }
 
+func (h *HandlerFn) updateSubTask(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid sub task ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+	}
+
+	var subTask models.SubTask
+
+	if err := json.NewDecoder(r.Body).Decode(&subTask); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	validate := validator.New()
+
+	err := validate.Struct(subTask)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:        http.StatusBadRequest,
+			Code:          internal.ErrorCodeValidationFailed,
+			Message:       "One or more fields are invalid",
+			InvalidFields: internal.ConstructInvalidFieldData(err)})
+
+		return
+	}
+
+	query := "UPDATE sub_tasks SET name=$1 WHERE id=$2"
+
+	result, err := h.DB.Exec(query, subTask.Name, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Updating sub task with ID {%v} failed.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		// TODO - check whether not found here is okay
+		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Updating sub task with ID {%v} failed. Task may not be available.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated sub Task successfully."})
+}
+
 func (h *HandlerFn) updateTaskMetadata(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
@@ -352,6 +448,34 @@ func (h *HandlerFn) deleteTask(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Deleted task with ID {%v} successfully.", id)})
 }
 
+func (h *HandlerFn) deleteSubTask(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid sub task ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	result, error := h.DB.Exec("DELETE FROM sub_tasks where id = $1", id)
+
+	if error != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Deleting sub task failed", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Sub Task either already deleted or task with ID {%v} does not exist.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Deleted sub task with ID {%v} successfully.", id)})
+}
+
 func (h *HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
 	idStr := chi.URLParam(r, "id")
 
@@ -388,6 +512,40 @@ func (h *HandlerFn) toggleTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Toggled task with ID {%v} successfully.", id)})
+}
+
+func (h *HandlerFn) toggleSubTask(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid sub task ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	query := `
+	UPDATE sub_tasks 
+	SET completed = NOT completed
+	WHERE id = $1;
+	`
+
+	result, error := h.DB.Exec(query, id)
+
+	if error != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Toggling sub task failed", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage, Error: error.Error()})
+
+		return
+	}
+
+	if rf, error := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Sub Task with ID {%v} does not exist.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage, Error: error.Error()})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Toggled sub task with ID {%v} successfully.", id)})
 }
 
 func (h *HandlerFn) toggleImportant(w http.ResponseWriter, r *http.Request) {
@@ -723,6 +881,51 @@ func (h *HandlerFn) logs(w http.ResponseWriter, r *http.Request) {
 
 }
 
+func (h *HandlerFn) createSubTask(w http.ResponseWriter, r *http.Request) {
+	var newSubTask models.SubTask
+
+	if err := json.NewDecoder(r.Body).Decode(&newSubTask); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	validate := validator.New()
+
+	err := validate.Struct(newSubTask)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:        http.StatusBadRequest,
+			Code:          internal.ErrorCodeValidationFailed,
+			Message:       "One or more fields are invalid",
+			InvalidFields: internal.ConstructInvalidFieldData(err)})
+		// TODO: add request id here
+
+		return
+	}
+
+	utils.Assert(len(newSubTask.Name) > 0, "Sub Task name length should be greater than 0")
+
+	query := `
+	INSERT INTO sub_tasks (name, task_id, completed)
+	VALUES ($1, $2, $3)
+	RETURNING id;
+`
+
+	var subTaskID int
+
+	err = h.DB.QueryRow(query, newSubTask.Name, newSubTask.TaskID, newSubTask.Completed).Scan(&subTaskID)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusCreated, models.CreateTaskResponse{Message: "Sub Task created successfully", ID: subTaskID})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -738,13 +941,20 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 		r.Get("/api/v1/tasks", routeHandler.tasks)
 		r.Post("/api/v1/task/create", routeHandler.createTask)
+		r.Post("/api/v1/task/sub-task/create", routeHandler.createSubTask)
+
 		r.Get("/api/v1/task/{id}", routeHandler.getTask)
 		r.Post("/api/v1/task/{id}", routeHandler.updateTask)
+		r.Post("/api/v1/sub-task/{id}", routeHandler.updateSubTask)
+
 		r.Post("/api/v1/task/{id}/metadata", routeHandler.updateTaskMetadata)
 		r.Delete("/api/v1/task/{id}", routeHandler.deleteTask)
+		r.Delete("/api/v1/sub-task/{id}", routeHandler.deleteSubTask)
 		r.Post("/api/v1/task/{id}/add/due-date", routeHandler.addDueDate)
 
 		r.Post("/api/v1/task/{id}/completed/toggle", routeHandler.toggleTask)
+		r.Post("/api/v1/sub-task/{id}/completed/toggle", routeHandler.toggleSubTask)
+
 		r.Post("/api/v1/task/{id}/important/toggle", routeHandler.toggleImportant)
 		r.Post("/api/v1/task/{id}/add-to-my-day/toggle", routeHandler.toggleAddToMyToday)
 

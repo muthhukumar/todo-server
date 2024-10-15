@@ -2,18 +2,28 @@ package models
 
 import (
 	"fmt"
+	"time"
 )
 
 type Task struct {
-	ID          int    `json:"id"`
-	Name        string `json:"name" validate:"required,min=3,max=1000"`
-	Completed   bool   `json:"completed"`
-	CompletedOn string `json:"completed_on"`
-	CreatedAt   string `json:"created_at"`
-	IsImportant bool   `json:"is_important"`
-	MarkedToday string `json:"marked_today"`
-	DueDate     string `json:"due_date"`
-	Metadata    string `json:"metadata"`
+	ID          int       `json:"id"`
+	Name        string    `json:"name" validate:"required,min=3,max=1000"`
+	Completed   bool      `json:"completed"`
+	CompletedOn string    `json:"completed_on"`
+	CreatedAt   string    `json:"created_at"`
+	IsImportant bool      `json:"is_important"`
+	MarkedToday string    `json:"marked_today"`
+	DueDate     string    `json:"due_date"`
+	Metadata    string    `json:"metadata"`
+	SubTasks    []SubTask `json:"sub_tasks"`
+}
+
+type SubTask struct {
+	ID        int       `json:"id"`
+	Name      string    `json:"name" validate:"required,min=3,max=1000"`
+	Completed bool      `json:"completed"`
+	CreatedAt time.Time `json:"created_at"`
+	TaskID    int       `json:"task_id"` // TODO: this is required
 }
 
 type Response struct {
