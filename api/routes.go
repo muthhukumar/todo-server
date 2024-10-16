@@ -70,24 +70,35 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 	SELECT 
-    tasks.*,  -- Select all columns from tasks without renaming
-    sub_tasks.id AS subtask_id,  -- Include subtask-specific fields with different names
+    t.id,
+		t.name,
+		t.completed,
+		t.completed_on,
+		t.created_at,
+		t.marked_today,
+		t.is_important,
+		t.due_date,
+		t.metadata,
+		t.recurrence_pattern,
+		t.recurrence_interval,
+		t.start_date,
+    sub_tasks.id AS subtask_id,  
     sub_tasks.name AS subtask_name,
     sub_tasks.completed AS subtask_completed,
     sub_tasks.created_at AS subtask_created_at
 FROM 
-    tasks
+    tasks t
 LEFT JOIN 
-    sub_tasks ON sub_tasks.task_id = tasks.id
+    sub_tasks ON sub_tasks.task_id = t.id
 WHERE 
-    tasks.id = $1
+    t.id = $1
 ORDER BY 
     sub_tasks.created_at ASC;`
 
 	rows, err := h.DB.Query(query, id)
 
 	if err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to fetch tasks", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
+		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to fetch tasks", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
 
 		return
 	}
@@ -105,6 +116,7 @@ ORDER BY
 		if err := rows.Scan(
 			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt,
 			&task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata,
+			&task.RecurrencePattern, &task.RecurrenceInterval, &task.StartDate,
 			&subTaskID, &subTaskName, &subTaskCompleted, &subTaskCreatedAt); err != nil {
 		}
 
@@ -945,7 +957,13 @@ func (h *HandlerFn) updateRecurrencePattern(w http.ResponseWriter, r *http.Reque
 
 	query := "UPDATE tasks SET recurrence_pattern=$1, recurrence_interval=$2, start_date=$3 WHERE id=$4"
 
-	result, err := h.DB.Exec(query, task.RecurrencePattern, task.RecurrenceInterval, task.StartDate, id)
+	var result sql.Result
+
+	if task.RecurrencePattern == "" {
+		result, err = h.DB.Exec(query, nil, task.RecurrenceInterval, task.StartDate, id)
+	} else {
+		result, err = h.DB.Exec(query, task.RecurrencePattern, task.RecurrenceInterval, task.StartDate, id)
+	}
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Updating task recurrence pattern with ID {%v} failed.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
