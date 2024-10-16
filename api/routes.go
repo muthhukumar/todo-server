@@ -955,14 +955,14 @@ func (h *HandlerFn) updateRecurrencePattern(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	query := "UPDATE tasks SET recurrence_pattern=$1, recurrence_interval=$2, start_date=$3 WHERE id=$4"
+	query := "UPDATE tasks SET recurrence_pattern=$1, recurrence_interval=$2, start_date=$3, due_date=$4 WHERE id=$5"
 
 	var result sql.Result
 
 	if task.RecurrencePattern == "" {
 		result, err = h.DB.Exec(query, nil, task.RecurrenceInterval, task.StartDate, id)
 	} else {
-		result, err = h.DB.Exec(query, task.RecurrencePattern, task.RecurrenceInterval, task.StartDate, id)
+		result, err = h.DB.Exec(query, task.RecurrencePattern, task.RecurrenceInterval, task.StartDate, task.StartDate, id)
 	}
 
 	if err != nil {
