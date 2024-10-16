@@ -18,6 +18,15 @@ type Task struct {
 	SubTasks               []SubTask `json:"sub_tasks"`
 	InCompleteSubTaskCount int       `json:"incomplete_subtask_count"`
 	SubTaskCount           int       `json:"subtask_count"`
+	StartDate              string    `json:"start_date"`
+	RecurrencePattern      string    `json:"recurrence_pattern"`
+	RecurrenceInterval     int       `json:"recurrence_interval"`
+}
+
+type RecurringTask struct {
+	StartDate          string `json:"start_date" validate:"required,datetime=2006-01-02"`
+	RecurrencePattern  string `json:"recurrence_pattern" validate:"required,oneof=daily weekly monthly yearly"`
+	RecurrenceInterval int    `json:"recurrence_interval" validate:"required,gt=0"`
 }
 
 type SubTask struct {

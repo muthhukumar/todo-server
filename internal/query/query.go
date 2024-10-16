@@ -24,7 +24,16 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 	case "":
 		query = `
 		SELECT 
-			t.*,
+			t.id,
+			t.name,
+			t.completed,
+			t.completed_on,
+			t.created_at,
+			t.marked_today,
+			t.is_important,
+			t.due_date,
+			t.metadata,
+			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
 		FROM 
@@ -37,7 +46,16 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 		today := time.Now().Format("2006-01-02")
 		query = `
 		SELECT 
-			t.*,
+			t.id,
+			t.name,
+			t.completed,
+			t.completed_on,
+			t.created_at,
+			t.marked_today,
+			t.is_important,
+			t.due_date,
+			t.metadata,
+			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
 		FROM 
@@ -49,7 +67,16 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 	case "important":
 		query = `
 		SELECT 
-			t.*,
+			t.id,
+			t.name,
+			t.completed,
+			t.completed_on,
+			t.created_at,
+			t.marked_today,
+			t.is_important,
+			t.due_date,
+			t.metadata,
+			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
 		FROM 
@@ -61,7 +88,16 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 	default:
 		query = `
 		SELECT 
-			t.*,
+			t.id,
+			t.name,
+			t.completed,
+			t.completed_on,
+			t.created_at,
+			t.marked_today,
+			t.is_important,
+			t.due_date,
+			t.metadata,
+			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
 		FROM 
@@ -88,9 +124,9 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			query += " WHERE"
 		}
 		if filter == "my-day" {
-			query += " name ILIKE '%' || $2 || '%'"
+			query += " t.name ILIKE '%' || $2 || '%'"
 		} else {
-			query += " name ILIKE '%' || $1 || '%'"
+			query += " t.name ILIKE '%' || $1 || '%'"
 		}
 
 		args = append(args, searchTerm)
