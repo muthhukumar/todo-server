@@ -83,7 +83,7 @@ func ToggleTaskAndHandleRecurrence(db *sql.DB, taskID int) error {
     UPDATE tasks 
     SET completed = NOT completed, 
         completed_on = CASE 
-            WHEN NOT completed THEN TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS')
+            WHEN completed = FALSE THEN TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD HH24:MI:SS')
             ELSE '' 
         END 
     WHERE id = $1
@@ -101,17 +101,17 @@ SELECT
         ELSE NULL
     END AS next_start_date,
     CASE
-        WHEN ut.recurrence_pattern = 'daily' THEN TO_CHAR((CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 day') + INTERVAL '7 days', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'weekly' THEN TO_CHAR((CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 week') + INTERVAL '7 days', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'monthly' THEN TO_CHAR((CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 month') + INTERVAL '7 days', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'yearly' THEN TO_CHAR((CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 year') + INTERVAL '7 days', 'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'daily' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 day', 'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'weekly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 week', 'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'monthly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 month', 'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'yearly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 year', 'YYYY-MM-DD')
         ELSE NULL
     END AS next_due_date,
     ut.recurrence_pattern,
     ut.recurrence_interval
 FROM updated_task ut
-WHERE ut.completed = TRUE -- Check if the task was just completed
-AND ut.recurrence_pattern IS NOT NULL -- Ensure it's a recurring task
+WHERE ut.completed = TRUE 
+AND ut.recurrence_pattern IS NOT NULL 
 AND ut.recurrence_interval IS NOT NULL;
 	`
 
