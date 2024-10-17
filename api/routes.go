@@ -62,9 +62,12 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 	taskId := chi.URLParam(r, "id")
 
 	id, err := strconv.Atoi(taskId)
-
 	if err != nil {
-		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Task ID is not valid", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Message: "Task ID is not valid",
+			Status:  http.StatusBadRequest,
+			Code:    internal.ErrorCodeErrorMessage,
+		})
 		return
 	}
 
@@ -86,13 +89,13 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
     st.name AS sub_task_name, 
     st.completed AS sub_task_completed, 
     st.created_at AS sub_task_created_at
-FROM 
+	FROM 
     tasks t
-LEFT JOIN 
+	LEFT JOIN 
     sub_tasks st 
-ON 
+	ON 
     t.id = st.task_id
-WHERE 
+	WHERE 
     t.id = $1;`
 
 	rows, err := h.DB.Query(query, id)
@@ -110,19 +113,49 @@ WHERE
 	var task models.Task
 	var subTasks []models.SubTask
 
+	hasSubTasks := false
+
 	for rows.Next() {
 		var subTask models.SubTask
 		var subTaskID sql.NullInt64
+		var subTaskName sql.NullString
+		var subTaskCompleted sql.NullBool
+		var completedOn sql.NullString
 		var recurrencePattern sql.NullString
 		var recurrenceInterval sql.NullInt64
+		var subTaskCreatedAt sql.NullTime // Use sql.NullTime for nullable time
 
 		if err := rows.Scan(
-			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant,
-			&task.MarkedToday, &task.DueDate, &task.Metadata, &task.StartDate, &recurrencePattern, &recurrenceInterval,
-			&subTaskID, &subTask.Name, &subTask.Completed, &subTask.CreatedAt,
+			&task.ID,
+			&task.Name,
+			&task.Completed,
+			&completedOn,
+			&task.CreatedAt,
+			&task.IsImportant,
+			&task.MarkedToday,
+			&task.DueDate,
+			&task.Metadata,
+			&task.StartDate,
+			&recurrencePattern,
+			&recurrenceInterval,
+			&subTaskID,
+			&subTaskName,
+			&subTaskCompleted,
+			&subTaskCreatedAt,
 		); err != nil {
-			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to scan task", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
+			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
+				Message: "Failed to scan task",
+				Status:  http.StatusInternalServerError,
+				Code:    internal.ErrorCodeErrorMessage,
+				Error:   err.Error(),
+			})
 			return
+		}
+
+		if completedOn.Valid {
+			task.CompletedOn = completedOn.String
+		} else {
+			task.CompletedOn = ""
 		}
 
 		if recurrencePattern.Valid {
@@ -140,12 +173,34 @@ WHERE
 		if subTaskID.Valid {
 			subTask.ID = int(subTaskID.Int64)
 			subTask.TaskID = task.ID
-			subTasks = append(subTasks, subTask)
-		}
+			if subTaskName.Valid {
+				subTask.Name = subTaskName.String
+			} else {
+				subTask.Name = ""
+			}
 
+			if subTaskCompleted.Valid {
+				subTask.Completed = subTaskCompleted.Bool
+			} else {
+				subTask.Completed = false
+			}
+
+			if subTaskCreatedAt.Valid {
+				subTask.CreatedAt = subTaskCreatedAt.Time
+			} else {
+				subTask.CreatedAt = time.Time{}
+			}
+
+			subTasks = append(subTasks, subTask)
+			hasSubTasks = true
+		}
 	}
 
-	task.SubTasks = subTasks
+	if !hasSubTasks {
+		task.SubTasks = nil
+	} else {
+		task.SubTasks = subTasks
+	}
 
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: task})
 }
