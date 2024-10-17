@@ -114,10 +114,11 @@ WHERE
 		var subTask models.SubTask
 		var subTaskID sql.NullInt64
 		var recurrencePattern sql.NullString
+		var recurrenceInterval sql.NullInt64
 
 		if err := rows.Scan(
 			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant,
-			&task.MarkedToday, &task.DueDate, &task.Metadata, &task.StartDate, &recurrencePattern, &task.RecurrenceInterval,
+			&task.MarkedToday, &task.DueDate, &task.Metadata, &task.StartDate, &recurrencePattern, &recurrenceInterval,
 			&subTaskID, &subTask.Name, &subTask.Completed, &subTask.CreatedAt,
 		); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to scan task", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
@@ -128,6 +129,12 @@ WHERE
 			task.RecurrencePattern = recurrencePattern.String
 		} else {
 			task.RecurrencePattern = ""
+		}
+
+		if recurrenceInterval.Valid {
+			task.RecurrenceInterval = int(recurrenceInterval.Int64)
+		} else {
+			task.RecurrenceInterval = 0
 		}
 
 		if subTaskID.Valid {
