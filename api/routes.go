@@ -70,31 +70,30 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 
 	query := `
 	SELECT 
-    t.id,
-    t.name,
-    t.completed,
-    t.completed_on,
-    t.created_at,
-    t.marked_today,
-    t.is_important,
-    t.due_date,
-    t.metadata,
-    t.recurrence_pattern,
+    t.id, 
+    t.name, 
+    t.completed, 
+    t.completed_on, 
+    t.created_at, 
+    t.is_important, 
+    t.marked_today, 
+    t.due_date, 
+    t.metadata, 
+    t.start_date, 
+    t.recurrence_pattern, 
     t.recurrence_interval,
-    t.start_date,
-    sub_tasks.id AS subtask_id,  
-    sub_tasks.name AS subtask_name,
-    sub_tasks.completed AS subtask_completed,
-    sub_tasks.created_at AS subtask_created_at
+    st.id AS sub_task_id, 
+    st.name AS sub_task_name, 
+    st.completed AS sub_task_completed, 
+    st.created_at AS sub_task_created_at
 FROM 
     tasks t
 LEFT JOIN 
-    sub_tasks ON sub_tasks.task_id = t.id
+    sub_tasks st 
+ON 
+    t.id = st.task_id
 WHERE 
-    t.id = $1
-ORDER BY 
-    sub_tasks.created_at ASC;
-	`
+    t.id = $1;`
 
 	rows, err := h.DB.Query(query, id)
 	if err != nil {
@@ -112,40 +111,27 @@ ORDER BY
 	var subTasks []models.SubTask
 
 	for rows.Next() {
+		var subTask models.SubTask
 		var subTaskID sql.NullInt64
-		var subTaskName sql.NullString
-		var subTaskCompleted sql.NullBool
-		var subTaskCreatedAt sql.NullTime
 
-		err := rows.Scan(
-			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt,
-			&task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata,
-			&task.RecurrencePattern, &task.RecurrenceInterval, &task.StartDate,
-			&subTaskID, &subTaskName, &subTaskCompleted, &subTaskCreatedAt,
-		)
-
-		if err != nil {
+		if err := rows.Scan(
+			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant,
+			&task.MarkedToday, &task.DueDate, &task.Metadata, &task.StartDate, &task.RecurrencePattern, &task.RecurrenceInterval,
+			&subTaskID, &subTask.Name, &subTask.Completed, &subTask.CreatedAt,
+		); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to scan task", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
 			return
 		}
 
 		if subTaskID.Valid {
-			subTask := models.SubTask{
-				ID:        int(subTaskID.Int64),
-				Name:      subTaskName.String,
-				Completed: subTaskCompleted.Bool,
-				CreatedAt: subTaskCreatedAt.Time,
-			}
+			subTask.ID = int(subTaskID.Int64)
+			subTask.TaskID = task.ID
 			subTasks = append(subTasks, subTask)
 		}
+
 	}
 
 	task.SubTasks = subTasks
-
-	if err := rows.Err(); err != nil {
-		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Task with ID '%v' not found", id), Status: http.StatusNotFound, Code: internal.ErrorCodeErrorMessage})
-		return
-	}
 
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: task})
 }
