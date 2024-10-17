@@ -113,14 +113,21 @@ WHERE
 	for rows.Next() {
 		var subTask models.SubTask
 		var subTaskID sql.NullInt64
+		var recurrencePattern sql.NullString
 
 		if err := rows.Scan(
 			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.IsImportant,
-			&task.MarkedToday, &task.DueDate, &task.Metadata, &task.StartDate, &task.RecurrencePattern, &task.RecurrenceInterval,
+			&task.MarkedToday, &task.DueDate, &task.Metadata, &task.StartDate, &recurrencePattern, &task.RecurrenceInterval,
 			&subTaskID, &subTask.Name, &subTask.Completed, &subTask.CreatedAt,
 		); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to scan task", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
 			return
+		}
+
+		if recurrencePattern.Valid {
+			task.RecurrencePattern = recurrencePattern.String
+		} else {
+			task.RecurrencePattern = ""
 		}
 
 		if subTaskID.Valid {
@@ -955,7 +962,7 @@ func (h *HandlerFn) updateRecurrencePattern(w http.ResponseWriter, r *http.Reque
 	var result sql.Result
 
 	if task.RecurrencePattern == "" {
-		result, err = h.DB.Exec(query, nil, task.RecurrenceInterval, task.StartDate, id)
+		result, err = h.DB.Exec(query, nil, task.RecurrenceInterval, task.StartDate, task.StartDate, id)
 	} else {
 		result, err = h.DB.Exec(query, task.RecurrencePattern, task.RecurrenceInterval, task.StartDate, task.StartDate, id)
 	}
