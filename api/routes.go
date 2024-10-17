@@ -71,17 +71,17 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 	query := `
 	SELECT 
     t.id,
-		t.name,
-		t.completed,
-		t.completed_on,
-		t.created_at,
-		t.marked_today,
-		t.is_important,
-		t.due_date,
-		t.metadata,
-		t.recurrence_pattern,
-		t.recurrence_interval,
-		t.start_date,
+    t.name,
+    t.completed,
+    t.completed_on,
+    t.created_at,
+    t.marked_today,
+    t.is_important,
+    t.due_date,
+    t.metadata,
+    t.recurrence_pattern,
+    t.recurrence_interval,
+    t.start_date,
     sub_tasks.id AS subtask_id,  
     sub_tasks.name AS subtask_name,
     sub_tasks.completed AS subtask_completed,
@@ -93,13 +93,17 @@ LEFT JOIN
 WHERE 
     t.id = $1
 ORDER BY 
-    sub_tasks.created_at ASC;`
+    sub_tasks.created_at ASC;
+	`
 
 	rows, err := h.DB.Query(query, id)
-
 	if err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to fetch tasks", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
-
+		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
+			Message: "Failed to fetch tasks",
+			Status:  http.StatusInternalServerError,
+			Code:    internal.ErrorCodeErrorMessage,
+			Error:   err.Error(),
+		})
 		return
 	}
 	defer rows.Close()
@@ -113,11 +117,16 @@ ORDER BY
 		var subTaskCompleted sql.NullBool
 		var subTaskCreatedAt sql.NullTime
 
-		if err := rows.Scan(
+		err := rows.Scan(
 			&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt,
 			&task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata,
 			&task.RecurrencePattern, &task.RecurrenceInterval, &task.StartDate,
-			&subTaskID, &subTaskName, &subTaskCompleted, &subTaskCreatedAt); err != nil {
+			&subTaskID, &subTaskName, &subTaskCompleted, &subTaskCreatedAt,
+		)
+
+		if err != nil {
+			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: "Failed to scan task", Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
+			return
 		}
 
 		if subTaskID.Valid {
