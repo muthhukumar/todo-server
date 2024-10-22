@@ -137,12 +137,14 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 	}
 
 	if listID == 0 {
-		if len(args) > 0 || filter == "important" || filter == "my-day" || (showCompleted != "" && showCompleted == "false") || searchTerm != "" {
-			query += " AND "
-		} else {
-			query += " WHERE "
+		if filter != "important" && filter != "my-day" {
+			if len(args) > 0 || (showCompleted != "" && showCompleted == "false") || searchTerm != "" {
+				query += " AND "
+			} else {
+				query += " WHERE "
+			}
+			query += " t.list_id IS NULL "
 		}
-		query += " t.list_id IS NULL "
 	} else {
 		if len(args) > 0 || filter == "important" || filter == "my-day" || (showCompleted != "" && showCompleted == "false") || searchTerm != "" {
 			query += " AND "
