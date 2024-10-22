@@ -85,6 +85,7 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
     t.start_date, 
     t.recurrence_pattern, 
     t.recurrence_interval,
+		t.list_id,
     st.id AS sub_task_id, 
     st.name AS sub_task_name, 
     st.completed AS sub_task_completed, 
@@ -124,6 +125,7 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 		var recurrencePattern sql.NullString
 		var recurrenceInterval sql.NullInt64
 		var subTaskCreatedAt sql.NullTime // Use sql.NullTime for nullable time
+		var listID sql.NullInt64
 
 		if err := rows.Scan(
 			&task.ID,
@@ -138,6 +140,7 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 			&task.StartDate,
 			&recurrencePattern,
 			&recurrenceInterval,
+			&listID,
 			&subTaskID,
 			&subTaskName,
 			&subTaskCompleted,
@@ -194,6 +197,13 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 			subTasks = append(subTasks, subTask)
 			hasSubTasks = true
 		}
+
+		if listID.Valid {
+			task.ListID = int(listID.Int64)
+		} else {
+			task.ListID = 0
+		}
+
 	}
 
 	if !hasSubTasks {
@@ -273,8 +283,9 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	searchTerm := r.URL.Query().Get("query")
 	showCompleted := r.URL.Query().Get("showCompleted")
 	size := internal.ParseSize(r.URL.Query().Get("size"))
+	listID := internal.ParseSize(r.URL.Query().Get("list_id"))
 
-	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted, size)
+	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted, size, listID)
 
 	rows, err := h.DB.Query(query, args...)
 
@@ -287,7 +298,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata, &task.RecurrencePattern, &task.InCompleteSubTaskCount, &task.SubTaskCount); err != nil {
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata, &task.ListID, &task.RecurrencePattern, &task.InCompleteSubTaskCount, &task.SubTaskCount); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
 
 			return
@@ -331,18 +342,29 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 
 	utils.Assert(len(newTask.Name) > 0, "Task name length should be greater than 0")
 
-	query := `
-	INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata)
-	VALUES ($1, $2, $3, $4, $5, $6, $7) 
-	RETURNING id;
-`
-
 	var taskID int
 
-	err = h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata).Scan(&taskID)
+	if newTask.ListID == 0 {
+		query := `
+		INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata, list_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+		RETURNING id;
+		`
+
+		err = h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata, nil).Scan(&taskID)
+	} else {
+
+		query := `
+		INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata, list_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+		RETURNING id;
+		`
+		err = h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata, newTask.ListID).Scan(&taskID)
+
+	}
 
 	if err != nil {
-		utils.JsonResponse(w, http.StatusInternalServerError, "Creating Task failed.")
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
 
 		return
 	}
@@ -1043,6 +1065,244 @@ func (h *HandlerFn) updateRecurrencePattern(w http.ResponseWriter, r *http.Reque
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated Task recurring details successfully."})
 }
 
+func (h *HandlerFn) createList(w http.ResponseWriter, r *http.Request) {
+	var list models.List
+
+	if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	validate := validator.New()
+
+	err := validate.Struct(list)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:        http.StatusBadRequest,
+			Code:          internal.ErrorCodeValidationFailed,
+			Message:       "One or more fields are invalid",
+			InvalidFields: internal.ConstructInvalidFieldData(err)})
+
+		return
+	}
+
+	query := `
+	INSERT INTO lists (name) VALUES ($1) RETURNING id;
+	`
+
+	var listID int
+
+	err = h.DB.QueryRow(query, list.Name).Scan(&listID)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, "Creating list failed.")
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusCreated, models.CreateTaskResponse{Message: "List created successfully", ID: listID})
+}
+
+func (h *HandlerFn) lists(w http.ResponseWriter, r *http.Request) {
+	query := `SELECT id, name, created_at from lists`
+
+	rows, err := h.DB.Query(query)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
+		return
+	}
+
+	var lists []models.List
+
+	for rows.Next() {
+		var list models.List
+		if err := rows.Scan(&list.ID, &list.Name, &list.CreatedAt); err != nil {
+			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
+
+			return
+		}
+		lists = append(lists, list)
+	}
+	defer rows.Close()
+
+	if len(lists) == 0 {
+		utils.JsonResponse(w, http.StatusOK, models.Response{Data: []models.List{}})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: lists})
+}
+
+func (h *HandlerFn) updateTaskListId(w http.ResponseWriter, r *http.Request) {
+	taskIdStr := chi.URLParam(r, "taskId")
+	taskId, err := strconv.Atoi(taskIdStr)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Message: "Task ID is not valid",
+			Status:  http.StatusBadRequest,
+			Code:    internal.ErrorCodeErrorMessage,
+		})
+		return
+	}
+
+	var listID models.GetListID
+
+	if err := json.NewDecoder(r.Body).Decode(&listID); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	query := `
+	update tasks SET list_id=$1 WHERE id=$2;
+	`
+
+	var result sql.Result
+
+	if listID.ListID == 0 {
+		result, err = h.DB.Exec(query, nil, taskId)
+	} else {
+		result, err = h.DB.Exec(query, listID.ListID, taskId)
+	}
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Updating task's list id with ID {%v} failed.", taskId), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage, Error: err.Error()})
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Updating task's list with ID {%v} failed. Task may not be available.", taskId), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated Task's list id successfully."})
+
+}
+
+func (h *HandlerFn) updateListName(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid list ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+	}
+
+	var list models.List
+
+	if err := json.NewDecoder(r.Body).Decode(&list); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	validate := validator.New()
+
+	err := validate.Struct(list)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:        http.StatusBadRequest,
+			Code:          internal.ErrorCodeValidationFailed,
+			Message:       "One or more fields are invalid",
+			InvalidFields: internal.ConstructInvalidFieldData(err)})
+
+		return
+	}
+
+	query := "UPDATE lists SET name=$1 WHERE id=$2"
+
+	result, err := h.DB.Exec(query, list.Name, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Updating list with ID {%v} failed.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		// TODO - check whether not found here is okay
+		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Updating list with ID {%v} failed. list may not be available.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated list successfully."})
+}
+
+func (h *HandlerFn) deleteList(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid list ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	result, error := h.DB.Exec("DELETE FROM lists where id = $1", id)
+
+	if error != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Deleting list failed", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("List either already deleted or list with ID {%v} does not exist.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Deleted list with ID {%v} successfully.", id)})
+}
+
+func (h *HandlerFn) getList(w http.ResponseWriter, r *http.Request) {
+	listId := chi.URLParam(r, "id")
+
+	id, err := strconv.Atoi(listId)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Message: "List ID is not valid",
+			Status:  http.StatusBadRequest,
+			Code:    internal.ErrorCodeErrorMessage,
+		})
+		return
+	}
+
+	query := `SELECT id, name, created_at from lists where id=$1;`
+
+	var list models.List
+
+	row := h.DB.QueryRow(query, id)
+
+	err = row.Scan(&list.ID, &list.Name, &list.CreatedAt)
+
+	if err != nil {
+		var message string
+		if err == sql.ErrNoRows {
+			message = "No list found with the give ID"
+		} else {
+			message = "Failed to get list details"
+		}
+
+		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
+			Message: message,
+			Status:  http.StatusInternalServerError,
+			Code:    internal.ErrorCodeErrorMessage,
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: list})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -1079,6 +1339,14 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 
 		r.Get("/api/v1/fetch-title", routeHandler.fetchWebPageTitle)
 		r.Get("/api/v1/title/sync", routeHandler.syncTitle)
+
+		r.Post("/api/v1/list/new", routeHandler.createList)
+		r.Get("/api/v1/lists", routeHandler.lists)
+		r.Post("/api/v1/list/{id}", routeHandler.updateListName)
+		r.Delete("/api/v1/list/{id}", routeHandler.deleteList)
+		r.Get("/api/v1/list/{id}", routeHandler.getList)
+
+		r.Post("/api/v1/task/{taskId}/list/update", routeHandler.updateTaskListId)
 
 		r.Get("/api/v1/log", routeHandler.logs)
 		r.Post("/api/v1/log", routeHandler.createLog)

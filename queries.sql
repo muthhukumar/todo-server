@@ -60,3 +60,12 @@ ADD COLUMN recurrence_pattern recurrence_pattern_enum;
 ALTER TABLE tasks 
 ADD COLUMN recurrence_interval INT;
 
+
+CREATE TABLE lists (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE tasks ADD COLUMN list_id INT REFERENCES lists(id) ON DELETE SET NULL;
+

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func GetTasksQuery(filter string, searchTerm string, showCompleted string, size int) (string, []interface{}) {
+func GetTasksQuery(filter string, searchTerm string, showCompleted string, size int, listID int) (string, []interface{}) {
 	var query string
 	var args []interface{} = []interface{}{}
 	var completedFilter string
@@ -33,6 +33,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
+			COALESCE(t.list_id, 0) AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
@@ -55,6 +56,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
+			COALESCE(t.list_id, 0) AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
@@ -76,6 +78,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
+			COALESCE(t.list_id, 0) AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
@@ -97,6 +100,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
+			COALESCE(t.list_id, 0) AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
@@ -130,6 +134,16 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 		}
 
 		args = append(args, searchTerm)
+	}
+
+	if listID != 0 {
+		if len(args) > 0 || filter == "important" || filter == "my-day" || (showCompleted != "" && showCompleted == "false") || searchTerm != "" {
+			query += " AND "
+		} else {
+			query += " WHERE "
+		}
+		query += fmt.Sprintf(" t.list_id =$%d ", len(args)+1)
+		args = append(args, listID)
 	}
 
 	query += " GROUP BY t.id "

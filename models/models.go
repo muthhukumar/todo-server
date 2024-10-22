@@ -21,6 +21,11 @@ type Task struct {
 	StartDate              string    `json:"start_date"`
 	RecurrencePattern      string    `json:"recurrence_pattern"`
 	RecurrenceInterval     int       `json:"recurrence_interval"`
+	ListID                 int       `json:"list_id"`
+}
+
+type GetListID struct {
+	ListID int `json:"list_id"`
 }
 
 type RecurringTask struct {
@@ -86,6 +91,12 @@ type InvalidField struct {
 	ErrorMessage string `json:"error_message"`
 	Field        string `json:"field"`
 	IsValid      bool   `json:"is_invalid"`
+}
+
+type List struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name" validate:"required,min=3,max=1000"`
+	CreatedAt string `json:"created_at"`
 }
 
 func (e *EmailTemplate) GetMessage() (msg []byte) {
