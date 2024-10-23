@@ -94,19 +94,71 @@ INSERT INTO tasks (name, start_date, due_date, recurrence_pattern, recurrence_in
 SELECT 
     ut.name, 
     CASE
-        WHEN ut.recurrence_pattern = 'daily' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 day', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'weekly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 week', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'monthly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 month', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'yearly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 year', 'YYYY-MM-DD')
+				WHEN ut.recurrence_pattern = 'daily' THEN 
+            TO_CHAR(
+                CASE
+                    -- If start_date is before or equal to today, use today (CURRENT_TIMESTAMP)
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 day'
+                    -- If start_date is in the future, use the start_date
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 day'
+                END, 
+            'YYYY-MM-DD')
+	   WHEN ut.recurrence_pattern = 'weekly' THEN 
+            TO_CHAR(
+                CASE
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 week'
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 week'
+                END, 
+            'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'monthly' THEN 
+            TO_CHAR(
+                CASE
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 month'
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 month'
+                END, 
+            'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'yearly' THEN 
+            TO_CHAR(
+                CASE
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 year'
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 year'
+                END, 
+            'YYYY-MM-DD')
         ELSE NULL
     END AS next_start_date,
+
     CASE
-        WHEN ut.recurrence_pattern = 'daily' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 day', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'weekly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 week', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'monthly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 month', 'YYYY-MM-DD')
-        WHEN ut.recurrence_pattern = 'yearly' THEN TO_CHAR(CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 year', 'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'daily' THEN 
+            TO_CHAR(
+                CASE
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 day'
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 day'
+                END, 
+            'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'weekly' THEN 
+            TO_CHAR(
+                CASE
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 week'
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 week'
+                END, 
+            'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'monthly' THEN 
+            TO_CHAR(
+                CASE
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 month'
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 month'
+                END, 
+            'YYYY-MM-DD')
+        WHEN ut.recurrence_pattern = 'yearly' THEN 
+            TO_CHAR(
+                CASE
+                    WHEN TO_DATE(ut.start_date, 'YYYY-MM-DD') <= CURRENT_DATE THEN CURRENT_TIMESTAMP + ut.recurrence_interval * INTERVAL '1 year'
+                    ELSE TO_DATE(ut.start_date, 'YYYY-MM-DD') + ut.recurrence_interval * INTERVAL '1 year'
+                END, 
+            'YYYY-MM-DD')
         ELSE NULL
     END AS next_due_date,
+
     ut.recurrence_pattern,
     ut.recurrence_interval
 FROM updated_task ut
