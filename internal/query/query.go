@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-func GetTasksQuery(filter string, searchTerm string, showCompleted string, size int, listID int) (string, []interface{}) {
+func GetTasksQuery(filter string, searchTerm string, showCompleted string, size int, listID int, showAllTasks string) (string, []interface{}) {
 	var query string
 	var args []interface{} = []interface{}{}
 	var completedFilter string
@@ -137,7 +137,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 	}
 
 	if listID == 0 {
-		if filter != "important" && filter != "my-day" {
+		if filter != "important" && filter != "my-day" && showAllTasks != "true" {
 			if len(args) > 0 || (showCompleted != "" && showCompleted == "false") || searchTerm != "" {
 				query += " AND "
 			} else {

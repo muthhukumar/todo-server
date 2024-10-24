@@ -284,8 +284,9 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	showCompleted := r.URL.Query().Get("showCompleted")
 	size := internal.ParseSize(r.URL.Query().Get("size"))
 	listID := internal.ParseSize(r.URL.Query().Get("list_id"))
+	showAllTasks := r.URL.Query().Get("show_all_tasks")
 
-	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted, size, listID)
+	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted, size, listID, showAllTasks)
 
 	rows, err := h.DB.Query(query, args...)
 
