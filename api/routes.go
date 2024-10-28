@@ -97,7 +97,10 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 	ON 
     t.id = st.task_id
 	WHERE 
-    t.id = $1;`
+    t.id = $1
+	ORDER BY 
+    st.created_at ASC;
+  `
 
 	rows, err := h.DB.Query(query, id)
 	if err != nil {
