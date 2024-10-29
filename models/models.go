@@ -94,9 +94,10 @@ type InvalidField struct {
 }
 
 type List struct {
-	ID        int    `json:"id"`
-	Name      string `json:"name" validate:"required,min=3,max=1000"`
-	CreatedAt string `json:"created_at"`
+	ID         int    `json:"id"`
+	Name       string `json:"name" validate:"required,min=3,max=1000"`
+	CreatedAt  string `json:"created_at"`
+	TasksCount int    `json:"tasks_count"`
 }
 
 func (e *EmailTemplate) GetMessage() (msg []byte) {

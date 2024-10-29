@@ -1110,7 +1110,19 @@ func (h *HandlerFn) createList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HandlerFn) lists(w http.ResponseWriter, r *http.Request) {
-	query := `SELECT id, name, created_at from lists`
+	query := `
+	SELECT 
+    l.id, 
+    l.name, 
+    l.created_at, 
+    COUNT(t.id) AS tasks_count
+	FROM 
+    lists l
+	LEFT JOIN 
+    tasks t ON l.id = t.list_id
+	GROUP BY 
+    l.id, l.name, l.created_at;
+	`
 
 	rows, err := h.DB.Query(query)
 
@@ -1123,7 +1135,7 @@ func (h *HandlerFn) lists(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var list models.List
-		if err := rows.Scan(&list.ID, &list.Name, &list.CreatedAt); err != nil {
+		if err := rows.Scan(&list.ID, &list.Name, &list.CreatedAt, &list.TasksCount); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
 
 			return
