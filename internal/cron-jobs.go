@@ -144,9 +144,9 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 		log.Println("Deleted logs successfully")
 	})
 
-	c.AddFunc("0 0 0 * * *", func() {
-		SyncURLTitle(db)
-	})
+	// c.AddFunc("0 0 0 * * *", func() {
+	// 	SyncURLTitle(db)
+	// })
 
 	// Every day morning 7:00 AM
 	c.AddFunc("0 0 7 * * *", func() {
@@ -278,6 +278,10 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	})
 
 	c.Start()
+
+	// for _, entry := range c.Entries() {
+	// 	c.Remove(entry.ID)
+	// }
 
 	log.Println("Cron jobs have been set up successfully.", time.Now())
 }

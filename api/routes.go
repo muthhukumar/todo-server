@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"text/template"
 	"time"
-	"todo-server/chrome"
 	data "todo-server/data/quotes"
 	"todo-server/db"
 	"todo-server/internal"
@@ -840,30 +839,33 @@ func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pageTitle, err := chrome.GetTitleFromURLUsingChrome(url)
+	// pageTitle, err := chrome.GetTitleFromURLUsingChrome(url)
 
-	if err != nil {
-		db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
+	// if err != nil {
+	// 	db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
 
-		utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
-			Status:  http.StatusBadRequest,
-			Message: "Fetching Title using headless browser failed",
-			Error:   err.Error(),
-		})
+	// 	utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{
+	// 		Status:  http.StatusBadRequest,
+	// 		Message: "Fetching Title using headless browser failed",
+	// 		Error:   err.Error(),
+	// 	})
 
-		return
-	}
+	// 	return
+	// }
 
-	if pageTitle == "" {
-		db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
+	// if pageTitle == "" {
+	// 	db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, false)
 
-		utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "Page title not found."})
-		return
-	}
+	// 	utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "Page title not found."})
+	// 	return
+	// }
 
-	db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, true)
+	// db.SaveOrUpdateURLTitle(h.DB, pageTitle, url, true)
 
-	utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
+	// utils.JsonResponse(w, http.StatusOK, models.Response{Data: pageTitle})
+
+	// TODO: for now this the response for this api. Once the server is migrated to better server will enabled it.
+	utils.JsonResponse(w, http.StatusUnprocessableEntity, models.MsgResponse{Message: "This URL is marked as Invalid."})
 }
 
 func (h *HandlerFn) syncTitle(w http.ResponseWriter, r *http.Request) {
