@@ -46,11 +46,6 @@ type Response struct {
 	Data any `json:"data"`
 }
 
-type QuotesResponse struct {
-	Quotes []string `json:"quotes"`
-	Size   int      `json:"size"`
-}
-
 type MsgResponse struct {
 	Message string `json:"message"`
 }

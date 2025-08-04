@@ -10,7 +10,6 @@ import (
 	"text/tabwriter"
 	"time"
 	"todo-server/backup"
-	data "todo-server/data/quotes"
 	"todo-server/db"
 	templates "todo-server/internal/templates/today-tasks"
 	"todo-server/models"
@@ -19,31 +18,6 @@ import (
 	"github.com/chromedp/chromedp"
 	"github.com/robfig/cron/v3"
 )
-
-func sendQuotes(emailAuth models.EmailAuth) {
-	quotes := data.GetRandomQuotes(data.GetQuotes(), 2)
-
-	var body = fmt.Sprintf("Quotes of the day: %v", time.Now().Format("Monday, January 2 2006"))
-
-	body += "\n"
-	body += "\n"
-
-	for idx, quote := range quotes {
-		body += fmt.Sprintf("%d. %s", idx+1, quote)
-		body += "\n"
-		body += "\n"
-	}
-
-	template := models.EmailTemplate{
-		To:      []string{emailAuth.ToEmail},
-		Subject: "Quotes of the day",
-		Body:    body,
-	}
-
-	email_sent := SendEmail(emailAuth, template)
-
-	log.Println("Email send for quote of the day", email_sent, time.Now())
-}
 
 // ANSI color codes
 const (
@@ -148,18 +122,9 @@ func SetupCronJobs(db *sql.DB, emailAuth models.EmailAuth) {
 	// 	SyncURLTitle(db)
 	// })
 
-	// Every day morning 7:00 AM
-	c.AddFunc("0 0 7 * * *", func() {
-		sendQuotes(emailAuth)
-	})
-
 	// Every day morning 3:00 AM
 	c.AddFunc("0 0 3 * * *", func() {
 		backup.BackupTasks(db, emailAuth)
-	})
-
-	c.AddFunc("0 0 9 * * *", func() {
-		sendQuotes(emailAuth)
 	})
 
 	// Today's Tasks. Every morning 7:00 AM

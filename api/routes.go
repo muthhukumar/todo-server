@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"text/template"
 	"time"
-	data "todo-server/data/quotes"
 	"todo-server/db"
 	"todo-server/internal"
 	"todo-server/models"
@@ -752,68 +751,6 @@ func (h *HandlerFn) addDueDate(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Due date updated successfully"})
 }
 
-func (h *HandlerFn) getQuotes(w http.ResponseWriter, r *http.Request) {
-	sizeStr := r.URL.Query().Get("size")
-	random := r.URL.Query().Get("random")
-	stream := r.URL.Query().Get("stream")
-
-	var size int
-
-	if sizeStr != "" {
-		var err error
-
-		size, err = strconv.Atoi(sizeStr)
-
-		size = max(0, size)
-
-		if err != nil {
-			utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid size parameter", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
-			return
-		}
-	}
-
-	utils.Assert(size >= 0, "Size should be greater than or equal to zero")
-
-	quotes := data.GetQuotes()
-
-	var result []string = quotes
-
-	if size > 0 {
-		result = quotes[0:min(size, len(quotes))]
-	}
-
-	if random == "true" {
-		if size <= 0 {
-			size = len(quotes)
-		}
-
-		result = data.GetRandomQuotes(quotes, size)
-	}
-
-	utils.Assert(result != nil, "Result should never be nil")
-	utils.Assert(len(result) >= 0, "Result should be greater than or equal to zero")
-
-	if stream == "true" {
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-
-		for _, item := range result {
-			select {
-			case <-r.Context().Done():
-				return
-			default:
-				fmt.Fprintf(w, "%s\n\n", item)
-				w.(http.Flusher).Flush()
-				time.Sleep(time.Millisecond * 100)
-			}
-		}
-		return
-	}
-
-	utils.JsonResponse(w, http.StatusOK, models.QuotesResponse{Quotes: result, Size: len(quotes)})
-}
-
 func (h *HandlerFn) fetchWebPageTitle(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query().Get("url")
 
@@ -1329,7 +1266,6 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	r.Get("/healthz", healthCheckWithDB)
 
 	r.Get("/api/v1/hello-world", helloWorld)
-	r.Get("/api/v1/quotes", routeHandler.getQuotes)
 
 	r.Group(func(r chi.Router) {
 		r.Use(internal.AuthWithApiKey)
