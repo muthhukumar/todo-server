@@ -284,11 +284,12 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("filter")
 	searchTerm := r.URL.Query().Get("query")
 	showCompleted := r.URL.Query().Get("showCompleted")
-	size := internal.ParseSize(r.URL.Query().Get("size"))
+	size := internal.SafeParseSize(r.URL.Query().Get("size"))
 	listID := internal.ParseSize(r.URL.Query().Get("list_id"))
 	showAllTasks := r.URL.Query().Get("show_all_tasks")
+	profileID := internal.ParseSize(r.URL.Query().Get("profile_id"))
 
-	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted, size, listID, showAllTasks)
+	query, args := query.GetTasksQuery(filter, searchTerm, showCompleted, size, listID, showAllTasks, profileID)
 
 	rows, err := h.DB.Query(query, args...)
 
@@ -301,7 +302,7 @@ func (h *HandlerFn) tasks(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var task models.Task
-		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata, &task.ListID, &task.RecurrencePattern, &task.InCompleteSubTaskCount, &task.SubTaskCount); err != nil {
+		if err := rows.Scan(&task.ID, &task.Name, &task.Completed, &task.CompletedOn, &task.CreatedAt, &task.MarkedToday, &task.IsImportant, &task.DueDate, &task.Metadata, &task.ListID, &task.ProfileID, &task.RecurrencePattern, &task.InCompleteSubTaskCount, &task.SubTaskCount); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
 
 			return
@@ -343,28 +344,28 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	utils.Assert(len(newTask.Name) > 0, "Task name length should be greater than 0")
-
 	var taskID int
 
-	if newTask.ListID == nil {
-		query := `
-		INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata, list_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-		RETURNING id;
-		`
+	query := `
+	INSERT INTO tasks 
+		(name, completed, completed_on, marked_today, is_important, due_date, metadata, list_id, profile_id)
+	VALUES 
+		($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	RETURNING id;
+`
 
-		err = h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata, nil).Scan(&taskID)
-	} else {
-
-		query := `
-		INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata, list_id)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-		RETURNING id;
-		`
-		err = h.DB.QueryRow(query, newTask.Name, newTask.Completed, newTask.CompletedOn, newTask.MarkedToday, newTask.IsImportant, newTask.DueDate, newTask.Metadata, newTask.ListID).Scan(&taskID)
-
-	}
+	err = h.DB.QueryRow(
+		query,
+		newTask.Name,
+		newTask.Completed,
+		newTask.CompletedOn,
+		newTask.MarkedToday,
+		newTask.IsImportant,
+		newTask.DueDate,
+		newTask.Metadata,
+		newTask.ListID,
+		newTask.ProfileID,
+	).Scan(&taskID)
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
@@ -1033,12 +1034,20 @@ func (h *HandlerFn) createList(w http.ResponseWriter, r *http.Request) {
 	}
 
 	query := `
-	INSERT INTO lists (name) VALUES ($1) RETURNING id;
+		INSERT INTO lists (name, profile_id) 
+		VALUES ($1, $2)
+		RETURNING id;
 	`
 
 	var listID int
 
-	err = h.DB.QueryRow(query, list.Name).Scan(&listID)
+	if list.ProfileID != nil {
+		fmt.Println("Profile ID:", *list.ProfileID)
+	} else {
+		fmt.Println("Profile ID is nil")
+	}
+
+	err = h.DB.QueryRow(query, list.Name, list.ProfileID).Scan(&listID)
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, "Creating list failed.")
@@ -1050,21 +1059,54 @@ func (h *HandlerFn) createList(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *HandlerFn) lists(w http.ResponseWriter, r *http.Request) {
-	query := `
+	profileId := r.URL.Query().Get("profile_id")
+
+	var (
+		query string
+		args  []interface{}
+	)
+
+	var profileID *int
+
+	if profileId != "" {
+		if id, err := strconv.Atoi(profileId); err == nil {
+			profileID = &id
+		} else {
+
+			utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+				Message: "Profile ID is not valid",
+				Status:  http.StatusBadRequest,
+				Code:    internal.ErrorCodeErrorMessage,
+			})
+			return
+		}
+
+	}
+
+	query = `
 	SELECT 
-    l.id, 
-    l.name, 
-    l.created_at, 
-    COUNT(t.id) AS tasks_count
+		l.id, 
+		l.name, 
+		l.created_at, 
+		COUNT(t.id) AS tasks_count,
+		l.profile_id
 	FROM 
-    lists l
+		lists l
 	LEFT JOIN 
-    tasks t ON l.id = t.list_id
-	GROUP BY 
-    l.id, l.name, l.created_at;
+		tasks t ON l.id = t.list_id
 	`
 
-	rows, err := h.DB.Query(query)
+	if profileID != nil {
+		query += " WHERE l.profile_id = $1 "
+		args = append(args, *profileID)
+	}
+
+	query += `
+	GROUP BY 
+		l.id, l.name, l.created_at
+	`
+
+	rows, err := h.DB.Query(query, args...)
 
 	if err != nil {
 		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
@@ -1075,7 +1117,7 @@ func (h *HandlerFn) lists(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var list models.List
-		if err := rows.Scan(&list.ID, &list.Name, &list.CreatedAt, &list.TasksCount); err != nil {
+		if err := rows.Scan(&list.ID, &list.Name, &list.CreatedAt, &list.TasksCount, &list.ProfileID); err != nil {
 			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
 
 			return
@@ -1259,6 +1301,162 @@ func (h *HandlerFn) getList(w http.ResponseWriter, r *http.Request) {
 	utils.JsonResponse(w, http.StatusOK, models.Response{Data: list})
 }
 
+func (h *HandlerFn) profiles(w http.ResponseWriter, r *http.Request) {
+	query := `
+	SELECT 
+    id, 
+    name, 
+    created_at
+	FROM 
+    profiles;
+	`
+
+	rows, err := h.DB.Query(query)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, models.MsgResponse{Message: err.Error()})
+		return
+	}
+
+	var profiles []models.Profile
+
+	for rows.Next() {
+		var profile models.Profile
+		if err := rows.Scan(&profile.ID, &profile.Name, &profile.CreatedAt); err != nil {
+			utils.JsonResponse(w, http.StatusInternalServerError, models.ErrorResponseV2{Message: err.Error(), Status: http.StatusInternalServerError, Code: internal.ErrorCodeErrorMessage})
+
+			return
+		}
+		profiles = append(profiles, profile)
+	}
+	defer rows.Close()
+
+	if len(profiles) == 0 {
+		utils.JsonResponse(w, http.StatusOK, models.Response{Data: []models.Profile{}})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.Response{Data: profiles})
+}
+
+func (h *HandlerFn) createProfile(w http.ResponseWriter, r *http.Request) {
+	var profile models.Profile
+
+	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	validate := validator.New()
+
+	err := validate.Struct(profile)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:        http.StatusBadRequest,
+			Code:          internal.ErrorCodeValidationFailed,
+			Message:       "One or more fields are invalid",
+			InvalidFields: internal.ConstructInvalidFieldData(err)})
+
+		return
+	}
+
+	query := `
+	INSERT INTO profiles (name) VALUES ($1) RETURNING id;
+	`
+
+	var profileID int
+
+	err = h.DB.QueryRow(query, profile.Name).Scan(&profileID)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusInternalServerError, "Creating profile failed.")
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusCreated, models.CreateTaskResponse{Message: "Profile created successfully", ID: profileID})
+}
+
+func (h *HandlerFn) updateProfileName(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid profile ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+	}
+
+	var profile models.Profile
+
+	if err := json.NewDecoder(r.Body).Decode(&profile); err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid request body", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	validate := validator.New()
+
+	err := validate.Struct(profile)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{
+			Status:        http.StatusBadRequest,
+			Code:          internal.ErrorCodeValidationFailed,
+			Message:       "One or more fields are invalid",
+			InvalidFields: internal.ConstructInvalidFieldData(err)})
+
+		return
+	}
+
+	query := "UPDATE profiles SET name=$1 WHERE id=$2"
+
+	result, err := h.DB.Exec(query, profile.Name, id)
+
+	if err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Updating profile with ID {%v} failed.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		// TODO - check whether not found here is okay
+		utils.JsonResponse(w, http.StatusNotFound, models.ErrorResponseV2{Message: fmt.Sprintf("Updating profile with ID {%v} failed. Profile may not be available.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: "Updated profile successfully."})
+}
+
+func (h *HandlerFn) deleteProfile(w http.ResponseWriter, r *http.Request) {
+	idStr := chi.URLParam(r, "id")
+
+	id, id_err := strconv.Atoi(idStr)
+
+	if id_err != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Invalid profile ID", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	result, error := h.DB.Exec("DELETE FROM profiles where id = $1", id)
+
+	if error != nil {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: "Deleting profile failed", Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	if rf, _ := result.RowsAffected(); rf != 1 {
+		utils.JsonResponse(w, http.StatusBadRequest, models.ErrorResponseV2{Message: fmt.Sprintf("Profile either already deleted or Profile with ID {%v} does not exist.", id), Status: http.StatusBadRequest, Code: internal.ErrorCodeErrorMessage})
+
+		return
+	}
+
+	utils.JsonResponse(w, http.StatusOK, models.MsgResponse{Message: fmt.Sprintf("Deleted profile with ID {%v} successfully.", id)})
+}
+
 func SetupRoutes(r *chi.Mux, db *sql.DB) {
 	routeHandler := HandlerFn{db}
 
@@ -1300,6 +1498,12 @@ func SetupRoutes(r *chi.Mux, db *sql.DB) {
 		r.Post("/api/v1/list/{id}", routeHandler.updateListName)
 		r.Delete("/api/v1/list/{id}", routeHandler.deleteList)
 		r.Get("/api/v1/list/{id}", routeHandler.getList)
+
+		r.Post("/api/v1/profiles/new", routeHandler.createProfile)
+		r.Get("/api/v1/profiles", routeHandler.profiles)
+		r.Post("/api/v1/profile/{id}", routeHandler.updateProfileName)
+		r.Delete("/api/v1/profile/{id}", routeHandler.deleteProfile)
+		r.Post("/api/v1/task/{taskId}/list/update", routeHandler.updateTaskListId)
 
 		r.Post("/api/v1/task/{taskId}/list/update", routeHandler.updateTaskListId)
 

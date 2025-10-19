@@ -22,6 +22,7 @@ type Task struct {
 	RecurrencePattern      string    `json:"recurrence_pattern"`
 	RecurrenceInterval     int       `json:"recurrence_interval"`
 	ListID                 *int      `json:"list_id"`
+	ProfileID              *int      `json:"profile_id"`
 }
 
 type GetListID struct {
@@ -93,6 +94,13 @@ type List struct {
 	Name       string `json:"name" validate:"required,min=3,max=1000"`
 	CreatedAt  string `json:"created_at"`
 	TasksCount int    `json:"tasks_count"`
+	ProfileID  *int   `json:"profile_id"`
+}
+
+type Profile struct {
+	ID        int    `json:"id"`
+	Name      string `json:"name" validate:"required,min=3,max=50"`
+	CreatedAt string `json:"created_at"`
 }
 
 func (e *EmailTemplate) GetMessage() (msg []byte) {

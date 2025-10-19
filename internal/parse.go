@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-func ParseSize(str string) int {
+func SafeParseSize(str string) int {
 	size, err := strconv.Atoi(str)
 
 	if err != nil {
@@ -14,6 +14,20 @@ func ParseSize(str string) int {
 	}
 
 	return size
+}
+
+func ParseSize(str string) *int {
+	if str == "" {
+		return nil
+	}
+
+	size, err := strconv.Atoi(str)
+
+	if err != nil {
+		return nil
+	}
+
+	return &size
 }
 
 func ExtractTitle(input string) (string, error) {
