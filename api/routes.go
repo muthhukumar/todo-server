@@ -200,9 +200,10 @@ func (h *HandlerFn) getTask(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if listID.Valid {
-			task.ListID = int(listID.Int64)
+			value := int(listID.Int64)
+			task.ListID = &value
 		} else {
-			task.ListID = 0
+			task.ListID = nil
 		}
 
 	}
@@ -346,7 +347,7 @@ func (h *HandlerFn) createTask(w http.ResponseWriter, r *http.Request) {
 
 	var taskID int
 
-	if newTask.ListID == 0 {
+	if newTask.ListID == nil {
 		query := `
 		INSERT INTO tasks (name, completed, completed_on, marked_today, is_important, due_date, metadata, list_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 

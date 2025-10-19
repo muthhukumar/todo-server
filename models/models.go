@@ -21,7 +21,7 @@ type Task struct {
 	StartDate              string    `json:"start_date"`
 	RecurrencePattern      string    `json:"recurrence_pattern"`
 	RecurrenceInterval     int       `json:"recurrence_interval"`
-	ListID                 int       `json:"list_id"`
+	ListID                 *int      `json:"list_id"`
 }
 
 type GetListID struct {

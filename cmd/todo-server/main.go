@@ -43,9 +43,9 @@ func main() {
 
 	api.SetupRoutes(r, db)
 
-	emailAuth := internal.LoadEmailCredentials()
+	// emailAuth := internal.LoadEmailCredentials()
 
-	internal.SetupCronJobs(db, emailAuth)
+	// internal.SetupCronJobs(db, emailAuth)
 
 	addr := fmt.Sprintf(":%v", port)
 

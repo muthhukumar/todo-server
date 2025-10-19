@@ -33,7 +33,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
-			COALESCE(t.list_id, 0) AS list_id, 
+			t.list_id AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
@@ -56,7 +56,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
-			COALESCE(t.list_id, 0) AS list_id, 
+			t.list_id AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
@@ -78,7 +78,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
-			COALESCE(t.list_id, 0) AS list_id, 
+			t.list_id AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count
@@ -100,7 +100,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			t.is_important,
 			t.due_date,
 			t.metadata,
-			COALESCE(t.list_id, 0) AS list_id, 
+			t.list_id AS list_id, 
 			COALESCE(t.recurrence_pattern::TEXT, '') AS recurrence_pattern, 
 			COALESCE(COUNT(CASE WHEN st.completed = false THEN 1 END), 0) AS incomplete_subtask_count,
 			COALESCE(COUNT(st.id), 0) AS subtask_count

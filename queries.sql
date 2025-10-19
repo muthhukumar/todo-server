@@ -12,7 +12,6 @@ alter table tasks add column due_date VARCHAR(255) NOT NULL DEFAULT '';
 alter table tasks add column metadata VARCHAR(255) NOT NULL DEFAULT '';
 
 alter table tasks add column start_date VARCHAR(255) NOT NULL DEFAULT '';
-alter table tasks add column recurrence_pattern 
 alter table tasks add column recurrence_internal INT;
 
 CREATE TABLE url_titles (
