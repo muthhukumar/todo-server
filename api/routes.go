@@ -1061,6 +1061,12 @@ func (h *HandlerFn) createList(w http.ResponseWriter, r *http.Request) {
 func (h *HandlerFn) lists(w http.ResponseWriter, r *http.Request) {
 	profileId := r.URL.Query().Get("profile_id")
 
+	if profileId == "null" {
+		profileId = ""
+	}
+
+	println(profileId)
+
 	var (
 		query string
 		args  []interface{}
