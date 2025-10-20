@@ -6,14 +6,22 @@ import (
 	"time"
 )
 
-func GetTasksQuery(filter string, searchTerm string, showCompleted string, size int, listID *int, showAllTasks string, profileId *int) (string, []interface{}) {
+func GetTasksQuery(
+	filter string,
+	searchTerm string,
+	showCompleted string,
+	size int,
+	listID *int,
+	showAllTasks string,
+	profileId *int,
+) (string, []interface{}) {
 	var query string
-	var args []interface{} = []interface{}{}
+	var args []interface{}
 	var completedFilter string
 
 	switch showCompleted {
 	case "true":
-		completedFilter = " " // No filter for completed tasks
+		completedFilter = " "
 	case "false":
 		completedFilter = " t.completed = false "
 	default:
@@ -65,7 +73,14 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			query += " WHERE"
 		}
 		query += fmt.Sprintf(" t.profile_id = $%d", len(args)+1)
-		args = append(args, profileId)
+		args = append(args, *profileId)
+	} else {
+		if strings.Contains(query, "WHERE") {
+			query += " AND"
+		} else {
+			query += " WHERE"
+		}
+		query += " t.profile_id IS NULL"
 	}
 
 	if showCompleted == "false" {
@@ -103,7 +118,7 @@ func GetTasksQuery(filter string, searchTerm string, showCompleted string, size 
 			query += " WHERE"
 		}
 		query += fmt.Sprintf(" t.list_id = $%d ", len(args)+1)
-		args = append(args, listID)
+		args = append(args, *listID)
 	}
 
 	query += " GROUP BY t.id "
